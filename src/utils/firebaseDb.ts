@@ -4,6 +4,7 @@ import {
   getDocs, 
   setDoc, 
   getDoc,
+  deleteDoc,
   writeBatch
 } from "firebase/firestore";
 import { db, auth } from "./firebaseAuth";
@@ -115,6 +116,25 @@ export async function saveIndividualObraOnline(obra: Obra): Promise<boolean> {
   } catch (error) {
     try {
       handleFirestoreError(error, OperationType.WRITE, path);
+    } catch (formattedError) {
+      console.error(formattedError);
+    }
+    return false;
+  }
+}
+
+/**
+ * Deletes an individual work from Firestore.
+ */
+export async function deleteIndividualObraOnline(obraId: string): Promise<boolean> {
+  const path = `obras/${obraId}`;
+  try {
+    await deleteDoc(doc(db, "obras", obraId));
+    console.log(`[Firestore Database] Obra ${obraId} removida com sucesso da nuvem.`);
+    return true;
+  } catch (error) {
+    try {
+      handleFirestoreError(error, OperationType.DELETE, path);
     } catch (formattedError) {
       console.error(formattedError);
     }

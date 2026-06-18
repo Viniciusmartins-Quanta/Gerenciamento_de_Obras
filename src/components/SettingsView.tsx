@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Upload, CheckCircle, Image as ImageIcon, Trash2, FileImage, Link2 } from "lucide-react";
-import { compressImage } from "../utils/compressor";
 
 export default function SettingsView() {
   const [timbradoImage, setTimbradoImage] = useState<string | null>(null);
@@ -30,32 +29,42 @@ export default function SettingsView() {
     }
   }, []);
 
-  const handleTimbradoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTimbradoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      const compressedStr = await compressImage(file, 400, 250, 0.7);
-      setTimbradoImage(compressedStr);
-      localStorage.setItem("pdfTimbradoImage", compressedStr);
-      setShowTimbradoUrlInput(false);
-    } catch (err) {
-      console.error("Erro ao comprimir imagem de timbrado:", err);
-    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Str = event.target?.result as string;
+      if (base64Str) {
+        setTimbradoImage(base64Str);
+        localStorage.setItem("pdfTimbradoImage", base64Str);
+        setShowTimbradoUrlInput(false);
+      }
+    };
+    reader.onerror = (err) => {
+      console.error("Erro ao ler imagem de timbrado:", err);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleCapaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCapaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      const compressedStr = await compressImage(file, 800, 500, 0.7);
-      setCapaImage(compressedStr);
-      localStorage.setItem("pdfCapaImage", compressedStr);
-      setShowCapaUrlInput(false);
-    } catch (err) {
-      console.error("Erro ao comprimir imagem de capa:", err);
-    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Str = event.target?.result as string;
+      if (base64Str) {
+        setCapaImage(base64Str);
+        localStorage.setItem("pdfCapaImage", base64Str);
+        setShowCapaUrlInput(false);
+      }
+    };
+    reader.onerror = (err) => {
+      console.error("Erro ao ler imagem de capa:", err);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleClearTimbrado = () => {

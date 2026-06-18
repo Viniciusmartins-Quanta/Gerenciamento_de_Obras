@@ -6,7 +6,7 @@ import {
 } from "./data/mockData";
 import { 
   getOnlineObras, syncObrasToCloud, getOnlineLogs, 
-  syncLogsToCloud, getOnlineRevisions 
+  syncLogsToCloud, getOnlineRevisions, deleteIndividualObraOnline 
 } from "./utils/firebaseDb";
 import { exportObrasToExcel } from "./utils/excelGenerator";
 import { generateConsolidatedWeeklyPDF } from "./utils/pdfGenerator";
@@ -20,7 +20,7 @@ import SettingsView from "./components/SettingsView";
 import { 
   Building2, PlusCircle, Search, Filter, Database, TrendingUp, CheckCircle, 
   Clock, Coins, Download, Shield, LogOut, LayoutGrid, ClipboardList, AlertTriangle, Settings,
-  Wrench, Loader2, ShieldCheck, Check, Sparkles, Activity
+  Wrench, Loader2, ShieldCheck, Check, Sparkles, Activity, Trash2
 } from "lucide-react";
 
 export function getExecutionDeadlineDate(obra: Obra): Date | null {
@@ -374,6 +374,46 @@ export default function App() {
     saveLogs(updatedLogs);
 
     setShowWorkModal(false);
+  };
+
+  // DELETE CONTRACT WORK
+  const handleDeleteObra = async (obraId: string) => {
+    const parentObra = obras.find(o => o.id === obraId);
+    if (!parentObra) return;
+
+    if (!window.confirm(`Deseja realmente excluir permanentemente o contrato de obra Nº ${parentObra.contratoNo}?\nEsta ação não poderá ser desfeita.`)) {
+      return;
+    }
+
+    const updatedObras = obras.filter(o => o.id !== obraId);
+    setObras(updatedObras);
+    saveObras(updatedObras);
+
+    // Call individual deletion from cloud
+    deleteIndividualObraOnline(obraId).catch((err) => {
+      console.warn("Erro ao deletar obra da nuvem:", err);
+    });
+
+    if (selectedObraId === obraId) {
+      setSelectedObraId(null);
+    }
+
+    // Save logs
+    const newLog: AuditLog = {
+      id: "log-" + Date.now(),
+      timestamp: new Date().toISOString(),
+      userName: currentUser?.name || "Convidado",
+      userEmail: currentUser?.email || "anon@fiscal.gov",
+      userRole: currentUser?.role || UserRole.LEITOR,
+      acao: "EXCLUSAO_OBRA",
+      descricao: `Excluiu o contrato de obras públicas Nº ${parentObra.contratoNo} - ${parentObra.titulo}.`,
+      obraId: obraId,
+      obraTitulo: parentObra.titulo
+    };
+
+    const updatedLogs = [...auditLogs, newLog];
+    setAuditLogs(updatedLogs);
+    saveLogs(updatedLogs);
   };
 
   // 2. ADD TRANSITIONAL ADITIVO (AMENDMENT)
@@ -1393,8 +1433,20 @@ export default function App() {
                         <div className="flex items-center gap-1.5">
                           {currentUser && currentUser.role !== UserRole.LEITOR && (
                             <button
+                              onClick={() => handleDeleteObra(obra.id)}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                              id={`btn-excluir-obra-${obra.id}`}
+                              title="Excluir Contrato de Obra"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Excluir
+                            </button>
+                          )}
+
+                          {currentUser && currentUser.role !== UserRole.LEITOR && (
+                            <button
                               onClick={() => setDirectReportObraId(obra.id)}
-                              className="bg-orange-600 hover:bg-orange-500 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1"
+                              className="bg-orange-600 hover:bg-orange-500 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition-all flex items-center gap-1 cursor-pointer"
                               id={`btn-add-weekly-report-${obra.id}`}
                             >
                               <ClipboardList className="h-3 w-3" />
@@ -1404,7 +1456,7 @@ export default function App() {
                           
                           <button
                             onClick={() => setSelectedObraId(obra.id)}
-                            className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-200/80 text-[11px] font-bold px-4 py-1.5 rounded-xl shadow-sm transition-all hover:border-slate-350"
+                            className="bg-white hover:bg-slate-100 text-slate-800 border border-slate-200/80 text-[11px] font-bold px-4 py-1.5 rounded-xl shadow-sm transition-all hover:border-slate-350 cursor-pointer"
                           >
                             Gerenciar Ficha & PDF
                           </button>

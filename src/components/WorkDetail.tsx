@@ -7,7 +7,6 @@ import WorkTimeline from "./WorkTimeline";
 import AditivoForm from "./AditivoForm";
 import WeeklyReportForm from "./WeeklyReportForm";
 import WorkForm from "./WorkForm";
-import { compressImage } from "../utils/compressor";
 import { 
   Building2, Calendar, TrendingUp, AlertTriangle, FileText, CheckCircle, 
   MapPin, Coins, Timer, History, ShieldAlert, Download, Edit3, PlusCircle, ArrowLeft, ArrowUpRight,
@@ -273,21 +272,26 @@ export default function WorkDetail({
     exportSingleObraToExcel(obra);
   };
 
-  const handleCronologiaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCronologiaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      const compressedStr = await compressImage(file, 900, 700, 0.7);
-      onUpdateObra({
-        ...obra,
-        imagemCronologia: compressedStr
-      });
-      setCronologiaUrl("");
-      setShowCronologiaUrlInput(false);
-    } catch (err) {
-      console.error("Erro ao comprimir imagem de cronologia:", err);
-    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Str = event.target?.result as string;
+      if (base64Str) {
+        onUpdateObra({
+          ...obra,
+          imagemCronologia: base64Str
+        });
+        setCronologiaUrl("");
+        setShowCronologiaUrlInput(false);
+      }
+    };
+    reader.onerror = (err) => {
+      console.error("Erro ao ler imagem de cronologia:", err);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleRemoveCronologia = () => {
