@@ -1,0 +1,141 @@
+{
+  "entities": {
+    "obra": {
+      "title": "Obra",
+      "description": "Contrato de Obra de Engenharia Civil",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único da obra"
+        },
+        "titulo": {
+          "type": "string",
+          "description": "Título ou objeto do contrato"
+        },
+        "contratoNo": {
+          "type": "string",
+          "description": "Número do Contrato administrativo"
+        },
+        "concorrenciaPublicaNo": {
+          "type": "string",
+          "description": "Número da concorrência pública"
+        },
+        "processoAdministrativoNo": {
+          "type": "string",
+          "description": "Número do processo administrativo correspondente"
+        },
+        "dataAssinatura": {
+          "type": "string",
+          "description": "Data de assinatura do termo do contrato"
+        },
+        "dataPublicacaoJOM": {
+          "type": "string",
+          "description": "Data de publicação na JOM"
+        },
+        "dataOrdemInicio": {
+          "type": "string",
+          "description": "Data de expedição da ordem de início"
+        },
+        "empresaVencedora": {
+          "type": "string",
+          "description": "Nome empresarial da executora"
+        },
+        "prazoVigenciaInicial": {
+          "type": "string",
+          "description": "Prazo de vigência original"
+        },
+        "prazoExecucaoInicial": {
+          "type": "string",
+          "description": "Prazo de execução original"
+        },
+        "dataInicio": {
+          "type": "string",
+          "description": "Data efetiva de início físico"
+        },
+        "valorContratualInicial": {
+          "type": "number",
+          "description": "Valor financeiro inicialmente pactuado"
+        },
+        "valorContratualAtual": {
+          "type": "number",
+          "description": "Valor financeiro corrigido atualizado"
+        },
+        "prazoVigenciaAtual": {
+          "type": "string",
+          "description": "Prazo de vigência física acrescida de aditamentos"
+        },
+        "prazoExecucaoAtual": {
+          "type": "string",
+          "description": "Prazo de execução corrigido para finalização"
+        },
+        "percentualFisicoAtual": {
+          "type": "number",
+          "description": "Relação percentual física atualizada e acumulada"
+        },
+        "statusGeral": {
+          "type": "string",
+          "description": "Status operacional geral: Em Andamento, Paralisada, Concluída"
+        }
+      },
+      "required": [
+        "id",
+        "titulo",
+        "contratoNo",
+        "statusGeral"
+      ]
+    },
+    "auditLog": {
+      "title": "Audit Log",
+      "description": "Ações e logs de auditoria de alteração dos diários",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único do log"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Registro de data e hora do evento"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Nome completo do usuário logado"
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Endereço eletrônico de login do usuário"
+        },
+        "userRole": {
+          "type": "string",
+          "description": "Nível de autoridade técnica"
+        },
+        "acao": {
+          "type": "string",
+          "description": "Código da ação executada"
+        },
+        "descricao": {
+          "type": "string",
+          "description": "Descrição detalhada informativa do evento"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "userName",
+        "acao",
+        "descricao"
+      ]
+    }
+  },
+  "firestore": {
+    "/obras/{obraId}": {
+      "schema": "obra",
+      "description": "Contratos administrativos e físicos das obras fiscais"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "auditLog",
+      "description": "Históricos consolidados de auditoria"
+    }
+  }
+}

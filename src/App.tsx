@@ -4,6 +4,10 @@ import {
   getSavedObras, saveObras, getSavedLogs, saveLogs, 
   getSavedRevisions, saveRevisions, getCurrentUser, saveCurrentUser 
 } from "./data/mockData";
+import { 
+  getOnlineObras, syncObrasToCloud, getOnlineLogs, 
+  syncLogsToCloud, getOnlineRevisions 
+} from "./utils/firebaseDb";
 import { exportObrasToExcel } from "./utils/excelGenerator";
 import { generateConsolidatedWeeklyPDF } from "./utils/pdfGenerator";
 import UserAuth from "./components/UserAuth";
@@ -221,12 +225,64 @@ export default function App() {
       });
   };
 
-  // Load from database on startup
+  // Load from database on startup with Firestore syncdown fallbacks
   useEffect(() => {
-    setObras(getSavedObras());
-    setAuditLogs(getSavedLogs());
-    setRevisions(getSavedRevisions());
+    const localObras = getSavedObras();
+    const localLogs = getSavedLogs();
+    const localRevisions = getSavedRevisions();
+
+    setObras(localObras);
+    setAuditLogs(localLogs);
+    setRevisions(localRevisions);
     setCurrentUser(getCurrentUser());
+
+    // Asynchronously update/synchronize structures in background
+    async function loadAndSyncFromCloud() {
+      try {
+        console.log("Iniciando verificação de banco de dados na nuvem...");
+        const cloudObras = await getOnlineObras();
+        
+        if (cloudObras !== null) {
+          if (cloudObras.length === 0) {
+            // Cloud is empty. If local has works, seed cloud with local data immediately!
+            console.log("Banco de dados na nuvem vazio. Semeando dados locais no Firestore.");
+            await syncObrasToCloud(localObras);
+            if (localLogs.length > 0) {
+              await syncLogsToCloud(localLogs);
+            }
+          } else {
+            // Cloud has data. Check if local dev storage is ahead (e.g. they created 9 works locally)
+            if (localObras.length > cloudObras.length) {
+              console.log(`Detectada defasagem em nuvem (${cloudObras.length} vs local ${localObras.length}). Atualizando nuvem.`);
+              await syncObrasToCloud(localObras);
+              setObras(localObras);
+            } else {
+              // Otherwise, cloud is the master source of truth!
+              console.log(`Carregados ${cloudObras.length} contratos a partir da nuvem.`);
+              setObras(cloudObras);
+              saveObras(cloudObras); // update local storage cache for subsequent offline boots
+            }
+          }
+        }
+        
+        // Audit logs pull
+        const cloudLogs = await getOnlineLogs();
+        if (cloudLogs !== null && cloudLogs.length > 0) {
+          setAuditLogs(cloudLogs);
+          saveLogs(cloudLogs);
+        }
+        
+        // Revisions pull
+        const cloudRevisions = await getOnlineRevisions();
+        if (cloudRevisions !== null && cloudRevisions.length > 0) {
+          setRevisions(cloudRevisions);
+        }
+      } catch (err) {
+        console.warn("Sincronização com nuvem pendente de autorização ou indisponível.", err);
+      }
+    }
+
+    loadAndSyncFromCloud();
   }, []);
 
   const handleUserChange = (newUser: UserProfile) => {

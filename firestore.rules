@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud2.firestore {
+  match /databases/{database}/documents {
+
+    // Global Deny-by-Default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Obras matching configuration
+    match /obras/{obraId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(obraId);
+    }
+
+    // Audit logs tracking
+    match /auditLogs/{logId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(logId);
+    }
+
+    // Revisions rollback logs
+    match /revisions/{revisionId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(revisionId);
+    }
+  }
+}

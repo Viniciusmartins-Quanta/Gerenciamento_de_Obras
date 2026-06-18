@@ -1,5 +1,6 @@
 import { UserProfile, UserRole, Obra, AuditLog, Revision } from "../types";
 import { pruneObraForSnapshot, pruneObrasProgressively } from "../utils/compressor";
+import { syncObrasToCloud, saveIndividualLogOnline, saveIndividualRevisionOnline } from "../utils/firebaseDb";
 
 export const INITIAL_USERS: UserProfile[] = [
   {
@@ -795,6 +796,9 @@ export function getSavedObras(): Obra[] {
 }
 
 export function saveObras(obras: Obra[]) {
+  // Synchronize entire unpruned dataset to Firebase Firestore cloud database
+  syncObrasToCloud(obras).catch((err) => console.warn("Erro de sincronização em nuvem de obras:", err));
+
   try {
     localStorage.setItem("obras_db", JSON.stringify(obras));
   } catch (e: any) {
@@ -852,6 +856,9 @@ export function getSavedLogs(): AuditLog[] {
 }
 
 export function saveLogs(logs: AuditLog[]) {
+  if (logs.length > 0) {
+    saveIndividualLogOnline(logs[0]).catch((err) => console.warn("Erro de sincronização em nuvem de log de auditoria:", err));
+  }
   try {
     // Keep at most last 50 entries to conserve storage quota
     const cappedLogs = logs.slice(0, 50);
@@ -898,6 +905,9 @@ export function getSavedRevisions(): Revision[] {
 }
 
 export function saveRevisions(revisions: Revision[]) {
+  if (revisions.length > 0) {
+    saveIndividualRevisionOnline(revisions[revisions.length - 1]).catch((err) => console.warn("Erro de sincronização em nuvem de histórico:", err));
+  }
   try {
     // Keep at most 8 audit history revisions across the platform.
     // Also, sanitize its obraSnapshots (omit raw heavyweight base64 photo lists)
