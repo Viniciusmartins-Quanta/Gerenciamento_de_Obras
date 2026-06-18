@@ -163,6 +163,31 @@ export default function ImageRepositoryView({
       }
     });
 
+    // Also include "Outros" images from localStorage
+    const outreImagesStr = localStorage.getItem("repository_outro_images");
+    if (outreImagesStr) {
+      try {
+        const outreImages = JSON.parse(outreImagesStr);
+        if (Array.isArray(outreImages)) {
+          outreImages.forEach((img) => {
+            list.push({
+              id: img.id,
+              url: img.url,
+              legenda: img.legenda || "Imagem carregada (Diversas)",
+              sourceType: "geral",
+              obraId: "OUTROS",
+              obraContrato: "Diversos / Outros",
+              obraTitulo: "Sem Obra Específica",
+              dataUpload: img.dataUpload,
+              usuario: img.usuario || "Usuário"
+            });
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing repository_outro_images", e);
+      }
+    }
+
     return list;
   }, [obras]);
 
@@ -259,19 +284,34 @@ export default function ImageRepositoryView({
       usuario: currentUser.name || "Técnico Fiscalizador"
     };
 
-    // Construct the updated works list with the new image injected
-    const updatedObras = obras.map((obra) => {
-      if (obra.id === uploadObraId) {
-        const existing = obra.fotosGerais || [];
-        return {
-          ...obra,
-          fotosGerais: [newImage, ...existing]
-        };
+    if (uploadObraId === "OUTROS") {
+      let existingOutros: any[] = [];
+      const outreStr = localStorage.getItem("repository_outro_images");
+      if (outreStr) {
+        try {
+          existingOutros = JSON.parse(outreStr);
+          if (!Array.isArray(existingOutros)) existingOutros = [];
+        } catch (e) {
+          existingOutros = [];
+        }
       }
-      return obra;
-    });
-
-    onUpdateObras(updatedObras);
+      existingOutros.unshift(newImage);
+      localStorage.setItem("repository_outro_images", JSON.stringify(existingOutros));
+      
+      onUpdateObras([...obras]);
+    } else {
+      const updatedObras = obras.map((obra) => {
+        if (obra.id === uploadObraId) {
+          const existing = obra.fotosGerais || [];
+          return {
+            ...obra,
+            fotosGerais: [newImage, ...existing]
+          };
+        }
+        return obra;
+      });
+      onUpdateObras(updatedObras);
+    }
 
     // Reset fields
     setUploadLegenda("");
@@ -287,17 +327,33 @@ export default function ImageRepositoryView({
     }
 
     if (window.confirm("Deseja realmente excluir esta imagem do repositório?")) {
-      const updatedObras = obras.map((obra) => {
-        if (obra.id === img.obraId && obra.fotosGerais) {
-          return {
-            ...obra,
-            fotosGerais: obra.fotosGerais.filter(f => f.id !== img.id)
-          };
+      if (img.obraId === "OUTROS") {
+        const outreStr = localStorage.getItem("repository_outro_images");
+        if (outreStr) {
+          try {
+            const outreImages = JSON.parse(outreStr);
+            if (Array.isArray(outreImages)) {
+              const updated = outreImages.filter(f => f.id !== img.id);
+              localStorage.setItem("repository_outro_images", JSON.stringify(updated));
+              onUpdateObras([...obras]);
+            }
+          } catch (e) {
+            console.error("Error deleting outro image", e);
+          }
         }
-        return obra;
-      });
+      } else {
+        const updatedObras = obras.map((obra) => {
+          if (obra.id === img.obraId && obra.fotosGerais) {
+            return {
+              ...obra,
+              fotosGerais: obra.fotosGerais.filter(f => f.id !== img.id)
+            };
+          }
+          return obra;
+        });
+        onUpdateObras(updatedObras);
+      }
 
-      onUpdateObras(updatedObras);
       if (lightboxImage?.id === img.id) {
         setLightboxImage(null);
       }
@@ -362,6 +418,7 @@ export default function ImageRepositoryView({
                 className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-orange-500"
               >
                 <option value="">-- Selecione uma Obra do Contrato --</option>
+                <option value="OUTROS">Diversos / Outros (Sem Obra Selecionada)</option>
                 {obras.map(o => (
                   <option key={o.id} value={o.id}>{o.contratoNo} — {o.titulo.substring(0, 50)}...</option>
                 ))}
@@ -369,9 +426,8 @@ export default function ImageRepositoryView({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-extrabold text-slate-600 block">Legenda ou Descrição Detalhada *</label>
+              <label className="text-[11px] font-extrabold text-slate-600 block">Legenda ou Descrição Detalhada (Opcional)</label>
               <textarea
-                required
                 maxLength={400}
                 placeholder="Exemplo: Vista panorâmica do asfalto da pista de pouso e decolagem ou progresso de montagem estrutural no hangar..."
                 value={uploadLegenda}
@@ -490,6 +546,7 @@ export default function ImageRepositoryView({
               className="w-full text-[11px] font-bold text-slate-650 pl-8 pr-2 py-1.5 focus:outline-none bg-slate-50 border border-slate-200 rounded-lg select-none"
             >
               <option value="TODAS">Todos os Contratos</option>
+              <option value="OUTROS">Diversos / Outros</option>
               {obras.map(obra => (
                 <option key={obra.id} value={obra.id}>{obra.contratoNo}</option>
               ))}

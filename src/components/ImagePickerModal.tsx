@@ -136,6 +136,31 @@ export default function ImagePickerModal({
       }
     });
 
+    // Also include "Outros" images from localStorage
+    const outreImagesStr = localStorage.getItem("repository_outro_images");
+    if (outreImagesStr) {
+      try {
+        const outreImages = JSON.parse(outreImagesStr);
+        if (Array.isArray(outreImages)) {
+          outreImages.forEach((img) => {
+            list.push({
+              id: img.id,
+              url: img.url,
+              legenda: img.legenda || "Imagem carregada (Diversas)",
+              sourceType: "geral",
+              obraId: "OUTROS",
+              obraContrato: "Diversos / Outros",
+              obraTitulo: "Sem Obra Específica",
+              dataUpload: img.dataUpload,
+              usuario: img.usuario || "Usuário"
+            });
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing repository_outro_images in picker modal", e);
+      }
+    }
+
     return list;
   }, [obras]);
 
