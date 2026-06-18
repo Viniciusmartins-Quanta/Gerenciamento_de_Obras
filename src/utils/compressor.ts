@@ -5,10 +5,15 @@
  */
 export function compressImage(
   fileOrBase64: File | string,
-  maxWidth = 800,
-  maxHeight = 600,
-  quality = 0.7
+  _maxWidth = 800,
+  _maxHeight = 600,
+  _quality = 0.7
 ): Promise<string> {
+  // Always maintain maximum quality and full resolution
+  const maxWidth = 999999;
+  const maxHeight = 999999;
+  const quality = 1.0;
+
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -73,20 +78,14 @@ export function pruneObraForSnapshot(obra: any): any {
   try {
     const cloned = JSON.parse(JSON.stringify(obra));
     
-    // Check and remove large chronology base64 string
-    if (cloned.imagemCronologia && cloned.imagemCronologia.length > 2000) {
-      cloned.imagemCronologia = "[Imagem Omitida para Conservar Memória Local]";
-    }
+    // Do NOT alter image of cover (fotoCapa) or chronology images (imagemCronologia) to adhere to user constraints
     
-    // Prune report covers and photo lists
+    // Prune general photo lists only if extremely large
     if (Array.isArray(cloned.relatoriosSemanais)) {
       cloned.relatoriosSemanais = cloned.relatoriosSemanais.map((rep: any) => {
-        if (rep.fotoCapa && rep.fotoCapa.length > 2000) {
-          rep.fotoCapa = "[Capa Omitida]";
-        }
         if (Array.isArray(rep.fotos)) {
           rep.fotos = rep.fotos.map((foto: any) => {
-            if (foto.url && foto.url.length > 2000) {
+            if (foto.url && foto.url.length > 5000000) {
               return {
                 ...foto,
                 url: "[Foto Omitida para Conservar Memória Local]"
@@ -116,20 +115,13 @@ export function pruneObrasProgressively(obras: any[], level: number): any[] {
     if (!obra) return obra;
     const cloned = JSON.parse(JSON.stringify(obra));
     
+    // We must NOT alter imagemCronologia, pdfTimbradoImage, or report fotoCapa (image of cover)
     if (level >= 1) {
-      // Level 1: Replace chronology image with tiny GIF if it is larger than 100KB,
-      // and do same for extremely large (>100KB) weekly report images
-      if (cloned.imagemCronologia && cloned.imagemCronologia.length > 100000) {
-        cloned.imagemCronologia = TINY_GIF;
-      }
       if (Array.isArray(cloned.relatoriosSemanais)) {
         cloned.relatoriosSemanais = cloned.relatoriosSemanais.map((rep: any) => {
-          if (rep.fotoCapa && rep.fotoCapa.length > 100000) {
-            rep.fotoCapa = TINY_GIF;
-          }
           if (Array.isArray(rep.fotos)) {
             rep.fotos = rep.fotos.map((f: any) => {
-              if (f.url && f.url.length > 100000) {
+              if (f.url && f.url.length > 200000) {
                 return { ...f, url: TINY_GIF };
               }
               return f;
@@ -140,19 +132,7 @@ export function pruneObrasProgressively(obras: any[], level: number): any[] {
       }
     }
     
-    if (level >= 2) {
-      // Level 2: Completely replace all chronology images and report covers with tiny GIF or undefined
-      cloned.imagemCronologia = undefined;
-      if (Array.isArray(cloned.relatoriosSemanais)) {
-        cloned.relatoriosSemanais = cloned.relatoriosSemanais.map((rep: any) => {
-          rep.fotoCapa = undefined;
-          return rep;
-        });
-      }
-    }
-    
     if (level >= 3) {
-      // Level 3: Keep photos only for the 2 most recent weekly reports, replace older ones with tiny transparent GIF
       if (Array.isArray(cloned.relatoriosSemanais)) {
         const sorted = [...cloned.relatoriosSemanais].sort((a: any, b: any) => {
           return new Date(b.periodoInicio || "").getTime() - new Date(a.periodoInicio || "").getTime();
@@ -171,10 +151,8 @@ export function pruneObrasProgressively(obras: any[], level: number): any[] {
     }
     
     if (level >= 4) {
-      // Level 4: Strip ALL photos and covers from ALL weekly reports, keeping only text lists (which are tiny)
       if (Array.isArray(cloned.relatoriosSemanais)) {
         cloned.relatoriosSemanais = cloned.relatoriosSemanais.map((rep: any) => {
-          rep.fotoCapa = undefined;
           if (Array.isArray(rep.fotos)) {
             rep.fotos = rep.fotos.map((f: any) => ({ ...f, url: TINY_GIF }));
           }
