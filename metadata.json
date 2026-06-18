@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Sistema de Gerenciamento e Relatórios de Obras",
+  "description": "Painel para cadastro de obras, controle de aditivos, histórico de revisões, logs de auditoria e geração automatizada de relatórios em PDF e Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
