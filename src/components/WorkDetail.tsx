@@ -10,7 +10,7 @@ import WorkForm from "./WorkForm";
 import { 
   Building2, Calendar, TrendingUp, AlertTriangle, FileText, CheckCircle, 
   MapPin, Coins, Timer, History, ShieldAlert, Download, Edit3, PlusCircle, ArrowLeft, ArrowUpRight,
-  Trash2, Cloud, FolderOpen, UploadCloud, Loader2, ExternalLink, RefreshCw, Link2
+  Trash2, Cloud, FolderOpen, UploadCloud, Loader2, ExternalLink, RefreshCw, Link2, Folder
 } from "lucide-react";
 import { getGmailToken, getGmailUser, googleSignIn } from "../utils/firebaseAuth";
 import { searchFolder, createFolder, listFiles, uploadFileToFolder, deleteFile, DriveFile } from "../utils/driveApi";
@@ -29,6 +29,7 @@ interface WorkDetailProps {
   onRestoreRevision: (rev: Revision) => void;
   onUpdateObra: (updatedObra: Obra) => void;
   onAddAuditLog?: (log: AuditLog) => void;
+  onSelectImageFromRepo?: (onSelected: (url: string) => void) => void;
 }
 
 function formatCurrency(val: number): string {
@@ -48,7 +49,8 @@ export default function WorkDetail({
   onEditWeeklyReport,
   onRestoreRevision,
   onUpdateObra,
-  onAddAuditLog
+  onAddAuditLog,
+  onSelectImageFromRepo
 }: WorkDetailProps) {
   const [activeTab, setActiveTab] = useState<"ficha" | "aditivos" | "relatorios" | "drive" | "revisoes" | "logs">("ficha");
   const [selectedReportId, setSelectedReportId] = useState<string>(
@@ -568,6 +570,34 @@ export default function WorkDetail({
                 
                 {currentUser.role !== UserRole.LEITOR && (
                   <div className="flex items-center gap-2.5">
+                    {onSelectImageFromRepo && (
+                      <button
+                        type="button"
+                        onClick={() => onSelectImageFromRepo((url) => {
+                          onUpdateObra({
+                            ...obra,
+                            imagemCronologia: url
+                          });
+                          if (onAddAuditLog) {
+                            onAddAuditLog({
+                              id: "log-" + Date.now(),
+                              timestamp: new Date().toISOString(),
+                              userName: currentUser.name,
+                              userEmail: currentUser.email,
+                              userRole: currentUser.role,
+                              acao: "MUDAR_CRONOLOGIA_REPOSITORIO",
+                              descricao: `Definiu imagem de cronologia para o contrato ${obra.contratoNo} a partir do repositório de evidências.`,
+                              obraId: obra.id,
+                              obraTitulo: obra.titulo
+                            });
+                          }
+                        })}
+                        className="bg-teal-50 hover:bg-teal-100 text-teal-750 text-xs font-bold py-1.5 px-3 rounded-xl cursor-pointer transition-all border border-teal-150 flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <Folder className="w-3.5 h-3.5 text-teal-500" />
+                        Repositório do Aplicativo
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {

@@ -19,10 +19,11 @@ import WeeklyReportForm from "./components/WeeklyReportForm";
 import AuditLogView from "./components/AuditLogView";
 import SettingsView from "./components/SettingsView";
 import ImageRepositoryView from "./components/ImageRepositoryView";
+import ImagePickerModal from "./components/ImagePickerModal";
 import { 
   Building2, PlusCircle, Search, Filter, Database, TrendingUp, CheckCircle, 
   Clock, Coins, Download, Shield, LogOut, LayoutGrid, ClipboardList, AlertTriangle, Settings,
-  Wrench, Loader2, ShieldCheck, Check, Sparkles, Activity, Trash2, Image as ImageIcon
+  Wrench, Loader2, ShieldCheck, Check, Sparkles, Activity, Trash2, Image as ImageIcon, Folder
 } from "lucide-react";
 
 export function getExecutionDeadlineDate(obra: Obra): Date | null {
@@ -185,6 +186,23 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusGeralFilter] = useState<string>("TODOS");
 
+  // Image repository picker modal states
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [imagePickerTitle, setImagePickerTitle] = useState("Selecione uma Imagem do Repositório");
+  const [imagePickerOnSelect, setImagePickerOnSelect] = useState<((url: string) => void) | null>(null);
+
+  const handleOpenImagePickerForObra = (obraId: string, callback: (url: string) => void) => {
+    setImagePickerTitle("Escolher Imagem para Cronologia / Obra");
+    setImagePickerOnSelect(() => callback);
+    setIsImagePickerOpen(true);
+  };
+
+  const handleOpenImagePicker = (title: string, callback: (url: string) => void) => {
+    setImagePickerTitle(title);
+    setImagePickerOnSelect(() => callback);
+    setIsImagePickerOpen(true);
+  };
+
   // Consolidated report states
   const [showConsolidatedModal, setShowConsolidatedModal] = useState(false);
   const [selectedConsolidatedWeekKey, setSelectedConsolidatedWeekKey] = useState("");
@@ -294,6 +312,34 @@ export default function App() {
 
     loadAndSyncFromCloud();
   }, []);
+
+  // Listen for custom settings events to register audit logs silently
+  useEffect(() => {
+    const handleEventLog = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        const { acao, descricao } = customEvent.detail;
+        const log: AuditLog = {
+          id: "log-" + Date.now(),
+          timestamp: new Date().toISOString(),
+          userName: currentUser ? currentUser.name : "Usuário CODEMAR",
+          userEmail: currentUser ? currentUser.email : "fiscalizacao@codemar.com.br",
+          userRole: currentUser ? currentUser.role : UserRole.ENGENHEIRO_CHEFE,
+          acao: acao,
+          descricao: descricao
+        };
+        setAuditLogs((prev) => {
+          const updated = [log, ...prev];
+          saveLogs(updated);
+          return updated;
+        });
+      }
+    };
+    window.addEventListener("auditLogRequest", handleEventLog);
+    return () => {
+      window.removeEventListener("auditLogRequest", handleEventLog);
+    };
+  }, [currentUser]);
 
   const handleUserChange = (newUser: UserProfile) => {
     setCurrentUser(newUser);
@@ -1255,6 +1301,7 @@ export default function App() {
             onEditWeeklyReport={(rep) => handleSaveWeeklyReport(rep, true)}
             onRestoreRevision={handleRestoreRevision}
             onUpdateObra={handleSaveObra}
+            onSelectImageFromRepo={(onSelected) => handleOpenImagePicker("Escolher Imagem de Cronologia", onSelected)}
             onAddAuditLog={(log: AuditLog) => {
               const updatedLogs = [...auditLogs, log];
               setAuditLogs(updatedLogs);
@@ -1567,7 +1614,10 @@ export default function App() {
               // GLOBAL LOGS COMPONENT VIEW
               <AuditLogView logs={auditLogs} />
             ) : viewMode === "settings" ? (
-              <SettingsView />
+              <SettingsView onSelectImageFromRepo={(targetType, onSelected) => {
+                const title = targetType === "capa" ? "Escolher Imagem de Capa" : "Escolher Papel de Carta (Timbrado)";
+                handleOpenImagePicker(title, onSelected);
+              }} />
             ) : viewMode === "images" ? (
               <ImageRepositoryView 
                 obras={obras}
@@ -1904,6 +1954,18 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <ImagePickerModal
+        isOpen={isImagePickerOpen}
+        onClose={() => setIsImagePickerOpen(false)}
+        obras={obras}
+        onSelect={(url) => {
+          if (imagePickerOnSelect) {
+            imagePickerOnSelect(url);
+          }
+        }}
+        title={imagePickerTitle}
+      />
 
       </div>
     </div>

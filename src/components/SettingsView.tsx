@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Upload, CheckCircle, Image as ImageIcon, Trash2, FileImage, Link2 } from "lucide-react";
+import { Upload, CheckCircle, Image as ImageIcon, Trash2, FileImage, Link2, Folder } from "lucide-react";
 
-export default function SettingsView() {
+export interface SettingsViewProps {
+  onSelectImageFromRepo?: (targetType: "capa" | "timbrado", onSelected: (url: string) => void) => void;
+}
+
+export default function SettingsView({ onSelectImageFromRepo }: SettingsViewProps) {
   const [timbradoImage, setTimbradoImage] = useState<string | null>(null);
   const [capaImage, setCapaImage] = useState<string | null>(null);
 
@@ -114,7 +118,7 @@ export default function SettingsView() {
                   <input type="file" className="hidden" accept="image/png, image/jpeg" onChange={handleCapaUpload} />
                 </label>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setShowCapaUrlInput(!showCapaUrlInput)}
@@ -123,6 +127,28 @@ export default function SettingsView() {
                     <Link2 className="w-3.5 h-3.5" />
                     {showCapaUrlInput ? "Ocultar inserção por link" : "Inserir imagem por link (URL)"}
                   </button>
+
+                  {onSelectImageFromRepo && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectImageFromRepo("capa", (url) => {
+                        setCapaImage(url);
+                        localStorage.setItem("pdfCapaImage", url);
+                        
+                        const event = new CustomEvent("auditLogRequest", {
+                          detail: {
+                            acao: "MUDAR_CAPA_REPOSITORIO",
+                            descricao: "Atualizou a imagem de capa institucional a partir do repositório de evidências."
+                          }
+                        });
+                        window.dispatchEvent(event);
+                      })}
+                      className="flex items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-850 transition-colors cursor-pointer bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-xl border border-teal-150 shadow-3xs"
+                    >
+                      <Folder className="w-3.5 h-3.5 text-teal-500 font-bold" />
+                      Definir pelo Repositório do Aplicativo 📂
+                    </button>
+                  )}
                 </div>
 
                 {showCapaUrlInput && (
@@ -210,7 +236,7 @@ export default function SettingsView() {
                   <input type="file" className="hidden" accept="image/png, image/jpeg" onChange={handleTimbradoUpload} />
                 </label>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setShowTimbradoUrlInput(!showTimbradoUrlInput)}
@@ -219,6 +245,28 @@ export default function SettingsView() {
                     <Link2 className="w-3.5 h-3.5" />
                     {showTimbradoUrlInput ? "Ocultar inserção por link" : "Inserir imagem por link (URL)"}
                   </button>
+
+                  {onSelectImageFromRepo && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectImageFromRepo("timbrado", (url) => {
+                        setTimbradoImage(url);
+                        localStorage.setItem("pdfTimbradoImage", url);
+                        
+                        const event = new CustomEvent("auditLogRequest", {
+                          detail: {
+                            acao: "MUDAR_TIMBRADO_REPOSITORIO",
+                            descricao: "Atualizou o papel de carta (timbrado) a partir do repositório de evidências."
+                          }
+                        });
+                        window.dispatchEvent(event);
+                      })}
+                      className="flex items-center gap-1.5 text-xs font-bold text-teal-600 hover:text-teal-850 transition-colors cursor-pointer bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-xl border border-teal-150 shadow-3xs"
+                    >
+                      <Folder className="w-3.5 h-3.5 text-teal-500 font-bold" />
+                      Definir pelo Repositório do Aplicativo 📂
+                    </button>
+                  )}
                 </div>
 
                 {showTimbradoUrlInput && (
