@@ -1,0 +1,41 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595 842" width="100%" height="100%">
+  <!-- White paper page -->
+  <rect width="595" height="842" fill="#ffffff" />
+  
+  <!-- Top header decoration line -->
+  <rect x="0" y="0" width="595" height="5" fill="#ea8658" />
+  
+  <!-- Top Right Header Logo -->
+  <g transform="translate(440, 45)">
+    <!-- Three orange arcs -->
+    <path d="M-5,-5 A12,12 0 0,1 -5,-25" fill="none" stroke="#ea8658" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M-10,0 A17,17 0 0,1 -10,-30" fill="none" stroke="#ea8658" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="1 2" opacity="0.8" />
+    <path d="M0,-10 A5,5 0 0,1 0,-20" fill="none" stroke="#ea8658" stroke-width="1.5" stroke-linecap="round" />
+    <!-- Text QUANTA & CONSULTORIA -->
+    <text x="15" y="-12" fill="#1e1e1e" font-family="'Inter', sans-serif" font-weight="bold" font-size="14" letter-spacing="1.5">QUANTA</text>
+    <text x="15" y="-3" fill="#7s7s7s" font-family="'Inter', sans-serif" font-weight="regular" font-size="6.5" letter-spacing="0.5">Associações &amp; Gestão</text>
+  </g>
+  
+  <!-- Bottom Map Contours Decor -->
+  <g opacity="0.08" stroke="#ea8658" stroke-width="1" fill="none">
+    <path d="M0,750 C100,770 150,710 250,730 C350,750 400,790 500,770 C550,760 580,780 595,790" />
+    <path d="M0,760 C100,780 150,720 250,740 C350,760 400,800 500,780 C550,770 580,790 595,800" />
+    <path d="M0,770 C100,790 150,730 250,750 C350,770 400,810 500,790 C550,780 580,800 595,810" />
+  </g>
+
+  <!-- Bottom orange footer bar -->
+  <rect x="0" y="834" width="595" height="8" fill="#ea8658" />
+
+  <!-- Centered Footer Text Block -->
+  <g transform="translate(0, 812)">
+    <!-- Line decoration -->
+    <line x1="50" y1="-20" x2="545" y2="-20" stroke="#f1f1f1" stroke-width="1" />
+    
+    <text x="60" y="-5" fill="#595959" font-family="'Inter', sans-serif" font-size="7" text-anchor="start">Rua Santa Cecília, n 84, sala 08 - Centro - Maricá/RJ</text>
+    
+    <text x="297" y="-5" fill="#595959" font-family="'Inter', sans-serif" font-size="7" font-weight="bold" text-anchor="middle">CNPJ: 05.314.789/0001-79</text>
+    
+    <text x="535" y="-5" fill="#595959" font-family="'Inter', sans-serif" font-size="7" text-anchor="end">assessoria@quantaconsultoria.com</text>
+  </g>
+</svg>

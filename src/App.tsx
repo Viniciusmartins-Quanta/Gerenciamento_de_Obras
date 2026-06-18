@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Obra, Aditivo, WeeklyReport, Revision, AuditLog, UserProfile, UserRole } from "./types";
 import { 
   getSavedObras, saveObras, getSavedLogs, saveLogs, 
-  getSavedRevisions, saveRevisions, getCurrentUser, saveCurrentUser 
+  getSavedRevisions, saveRevisions, getCurrentUser, saveCurrentUser,
+  quanta_capa_marica, quanta_papel_timbrado
 } from "./data/mockData";
 import { 
   getOnlineObras, syncObrasToCloud, getOnlineLogs, 
@@ -17,10 +18,11 @@ import WorkForm from "./components/WorkForm";
 import WeeklyReportForm from "./components/WeeklyReportForm";
 import AuditLogView from "./components/AuditLogView";
 import SettingsView from "./components/SettingsView";
+import ImageRepositoryView from "./components/ImageRepositoryView";
 import { 
   Building2, PlusCircle, Search, Filter, Database, TrendingUp, CheckCircle, 
   Clock, Coins, Download, Shield, LogOut, LayoutGrid, ClipboardList, AlertTriangle, Settings,
-  Wrench, Loader2, ShieldCheck, Check, Sparkles, Activity, Trash2
+  Wrench, Loader2, ShieldCheck, Check, Sparkles, Activity, Trash2, Image as ImageIcon
 } from "lucide-react";
 
 export function getExecutionDeadlineDate(obra: Obra): Date | null {
@@ -179,7 +181,7 @@ export default function App() {
   const [selectedObraId, setSelectedObraId] = useState<string | null>(null);
   const [directReportObraId, setDirectReportObraId] = useState<string | null>(null);
   const [showWorkModal, setShowWorkModal] = useState(false);
-  const [viewMode, setViewMode] = useState<"dashboard" | "logs" | "settings">("dashboard");
+  const [viewMode, setViewMode] = useState<"dashboard" | "logs" | "settings" | "images">("dashboard");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusGeralFilter] = useState<string>("TODOS");
 
@@ -227,6 +229,14 @@ export default function App() {
 
   // Load from database on startup with Firestore syncdown fallbacks
   useEffect(() => {
+    // Seed default Capa and Timbrado from clean SVG templates if not present
+    if (!localStorage.getItem("pdfCapaImage")) {
+      localStorage.setItem("pdfCapaImage", quanta_capa_marica);
+    }
+    if (!localStorage.getItem("pdfTimbradoImage")) {
+      localStorage.setItem("pdfTimbradoImage", quanta_papel_timbrado);
+    }
+
     const localObras = getSavedObras();
     const localLogs = getSavedLogs();
     const localRevisions = getSavedRevisions();
@@ -414,6 +424,58 @@ export default function App() {
     const updatedLogs = [...auditLogs, newLog];
     setAuditLogs(updatedLogs);
     saveLogs(updatedLogs);
+  };
+
+  // HANDLER FOR UPDATING OBRAS IN THE IMAGE REPOSITORY WITH AUDIT LOGGING
+  const handleUpdateObrasFromRepository = (updatedObras: Obra[]) => {
+    let detectedAction = "";
+    let detectedDesc = "";
+    let affectedObraId = undefined;
+    let affectedObraTitulo = undefined;
+
+    for (const oldObra of obras) {
+      const newObra = updatedObras.find(o => o.id === oldObra.id);
+      if (newObra) {
+        const oldPhotos = oldObra.fotosGerais || [];
+        const newPhotos = newObra.fotosGerais || [];
+
+        if (newPhotos.length > oldPhotos.length) {
+          const addedPhoto = newPhotos.find(p => !oldPhotos.some(op => op.id === p.id));
+          detectedAction = "ADICIONAR_FOTO_REPOSITORIO";
+          detectedDesc = `Anexou nova imagem suplementar no repositório geral: "${addedPhoto?.legenda || 'Sem legenda'}" para o contrato ${oldObra.contratoNo}.`;
+          affectedObraId = oldObra.id;
+          affectedObraTitulo = oldObra.titulo;
+          break;
+        } else if (newPhotos.length < oldPhotos.length) {
+          const deletedPhoto = oldPhotos.find(op => !newPhotos.some(np => np.id === op.id));
+          detectedAction = "EXCLUIR_FOTO_REPOSITORIO";
+          detectedDesc = `Excluiu uma imagem suplementar do repositório geral: "${deletedPhoto?.legenda || 'Sem legenda'}" do contrato ${oldObra.contratoNo}.`;
+          affectedObraId = oldObra.id;
+          affectedObraTitulo = oldObra.titulo;
+          break;
+        }
+      }
+    }
+
+    setObras(updatedObras);
+    saveObras(updatedObras);
+
+    if (detectedAction) {
+      const newLog: AuditLog = {
+        id: "log-" + Date.now(),
+        timestamp: new Date().toISOString(),
+        userName: currentUser?.name || "Convidado",
+        userEmail: currentUser?.email || "anon@fiscal.gov",
+        userRole: currentUser?.role || UserRole.LEITOR,
+        acao: detectedAction,
+        descricao: detectedDesc,
+        obraId: affectedObraId,
+        obraTitulo: affectedObraTitulo
+      };
+      const updatedLogs = [...auditLogs, newLog];
+      setAuditLogs(updatedLogs);
+      saveLogs(updatedLogs);
+    }
   };
 
   // 2. ADD TRANSITIONAL ADITIVO (AMENDMENT)
@@ -1064,6 +1126,21 @@ export default function App() {
 
           <button
             onClick={() => {
+              setSelectedObraId(null);
+              setViewMode("images");
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+              selectedObraId === null && viewMode === "images"
+                ? "bg-slate-800 text-white font-bold border-l-2 border-orange-500 pl-2"
+                : "hover:bg-slate-800/40 text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <ImageIcon className="h-4 w-4 shrink-0 text-slate-400" />
+            Repositório de Imagens
+          </button>
+
+          <button
+            onClick={() => {
               setShowDebuggerModal(true);
               setDebuggerStage("idle");
               setDebuggerSteps([]);
@@ -1130,6 +1207,8 @@ export default function App() {
                   ? `Fiscalização de Campo — Contrato ${activeObraObj.contratoNo}`
                   : viewMode === "dashboard"
                   ? "Portal de Engenharia & Fiscalização"
+                  : viewMode === "images"
+                  ? "Repositório de Imagens e Evidências"
                   : "Registro de Segurança & Auditoria"}
               </h1>
             </div>
@@ -1263,6 +1342,17 @@ export default function App() {
                 >
                   <ClipboardList className="h-4 w-4" />
                   Auditoria Global (Logs)
+                </button>
+                <button
+                  onClick={() => setViewMode("images")}
+                  className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    viewMode === "images"
+                      ? "bg-slate-900 text-white shadow-sm"
+                      : "bg-slate-50 border border-slate-200 text-slate-650 hover:bg-slate-100"
+                  }`}
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  Galeria de Imagens
                 </button>
               </div>
 
@@ -1478,6 +1568,12 @@ export default function App() {
               <AuditLogView logs={auditLogs} />
             ) : viewMode === "settings" ? (
               <SettingsView />
+            ) : viewMode === "images" ? (
+              <ImageRepositoryView 
+                obras={obras}
+                currentUser={currentUser || getSavedObras()[0] as any}
+                onUpdateObras={handleUpdateObrasFromRepository}
+              />
             ) : null}
 
           </div>

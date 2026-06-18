@@ -11,6 +11,12 @@ function formatCurrency(val: number): string {
   return "R$ " + val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function getImageFormat(dataUrl: string): "PNG" | "JPEG" {
+  if (!dataUrl) return "JPEG";
+  if (dataUrl.includes("image/png") || dataUrl.includes(".png") || dataUrl.startsWith("data:image/png") || dataUrl.includes("image/svg+xml") || dataUrl.includes(".svg") || dataUrl.startsWith("data:image/svg+xml")) return "PNG";
+  return "JPEG";
+}
+
 // Convert image URL to Base64 (promises fallback to placeholder on fail)
 async function getBase64ImageFromUrl(imageUrl: string): Promise<string | null> {
   try {
@@ -63,14 +69,14 @@ export async function generateWeeklyPDF(selectedObra: Obra, selectedReport: Week
   doc.addPage = function(...args: any[]) {
     originalAddPage(...args);
     if (bgImgData) {
-      doc.addImage(bgImgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+      doc.addImage(bgImgData, getImageFormat(bgImgData), 0, 0, 210, 297, undefined, "NONE");
     }
     return this;
   }
 
   // Draw background manually on the very first page
   if (bgImgData) {
-    doc.addImage(bgImgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    doc.addImage(bgImgData, getImageFormat(bgImgData), 0, 0, 210, 297, undefined, "NONE");
   }
 
   const primaryColor = [228, 161, 123]; // Quanta soft orange (#E4A17B)
@@ -85,7 +91,7 @@ export async function generateWeeklyPDF(selectedObra: Obra, selectedReport: Week
   }
   if (capaImgData && capaImgData.startsWith("data:image")) {
     // Draw the custom cover image filling the A4 page
-    doc.addImage(capaImgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    doc.addImage(capaImgData, getImageFormat(capaImgData), 0, 0, 210, 297, undefined, "NONE");
     
     // Add overlay text
     doc.setFont("Helvetica", "bold");
@@ -324,14 +330,15 @@ export async function generateWeeklyPDF(selectedObra: Obra, selectedReport: Week
     const yPos = 38; // Top-aligned started right below header
 
     try {
-      doc.addImage(cronoImg, "JPEG", xPos, yPos, imgWidth, imgHeight, undefined, "FAST");
+      doc.addImage(cronoImg, getImageFormat(cronoImg), xPos, yPos, imgWidth, imgHeight, undefined, "NONE");
     } catch {
       try {
-        doc.addImage(cronoImg, "PNG", xPos, yPos, imgWidth, imgHeight, undefined, "FAST");
+        const altFormat = getImageFormat(cronoImg) === "PNG" ? "JPEG" : "PNG";
+        doc.addImage(cronoImg, altFormat, xPos, yPos, imgWidth, imgHeight, undefined, "NONE");
       } catch (err) {
         doc.setFont("Helvetica", "italic");
         doc.setFontSize(10);
-        doc.setTextColor(150, 150, 150);
+         doc.setTextColor(150, 150, 150);
         doc.text("Não foi possível renderizar a imagem da cronologia. Formato não suportado.", 20, 45);
       }
     }
@@ -590,14 +597,14 @@ export async function generateConsolidatedWeeklyPDF(
   doc.addPage = function(...args: any[]) {
     originalAddPage(...args);
     if (bgImgData) {
-      doc.addImage(bgImgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+      doc.addImage(bgImgData, getImageFormat(bgImgData), 0, 0, 210, 297, undefined, "NONE");
     }
     return this;
   }
 
   // Draw background manually on the very first page
   if (bgImgData) {
-    doc.addImage(bgImgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    doc.addImage(bgImgData, getImageFormat(bgImgData), 0, 0, 210, 297, undefined, "NONE");
   }
 
   const primaryColor = [228, 161, 123]; // Quanta soft orange (#E4A17B)
@@ -611,7 +618,7 @@ export async function generateConsolidatedWeeklyPDF(
     if (fetched) capaImgData = fetched;
   }
   if (capaImgData && capaImgData.startsWith("data:image")) {
-    doc.addImage(capaImgData, "JPEG", 0, 0, 210, 297, undefined, "FAST");
+    doc.addImage(capaImgData, getImageFormat(capaImgData), 0, 0, 210, 297, undefined, "NONE");
     
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(28);
@@ -894,10 +901,11 @@ export async function generateConsolidatedWeeklyPDF(
       const yPos = 38; // Top-aligned started right below header
 
       try {
-        doc.addImage(cronoImg, "JPEG", xPos, yPos, imgWidth, imgHeight, undefined, "FAST");
+        doc.addImage(cronoImg, getImageFormat(cronoImg), xPos, yPos, imgWidth, imgHeight, undefined, "NONE");
       } catch {
         try {
-          doc.addImage(cronoImg, "PNG", xPos, yPos, imgWidth, imgHeight, undefined, "FAST");
+          const altFormat = getImageFormat(cronoImg) === "PNG" ? "JPEG" : "PNG";
+          doc.addImage(cronoImg, altFormat, xPos, yPos, imgWidth, imgHeight, undefined, "NONE");
         } catch (err) {
           doc.setFont("Helvetica", "italic");
           doc.setFontSize(10);

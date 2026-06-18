@@ -2,6 +2,29 @@ import { UserProfile, UserRole, Obra, AuditLog, Revision } from "../types";
 import { pruneObraForSnapshot, pruneObrasProgressively } from "../utils/compressor";
 import { syncObrasToCloud, saveIndividualLogOnline, saveIndividualRevisionOnline } from "../utils/firebaseDb";
 
+// @ts-ignore
+import timeline_32_2025 from "../assets/images/timeline_32_2025.svg";
+// @ts-ignore
+import timeline_07_2024 from "../assets/images/timeline_07_2024.svg";
+// @ts-ignore
+import timeline_30_2024 from "../assets/images/timeline_30_2024.svg";
+// @ts-ignore
+import timeline_62_2023 from "../assets/images/timeline_62_2023.svg";
+// @ts-ignore
+import timeline_28_2024_aditivos from "../assets/images/timeline_28_2024_aditivos.svg";
+// @ts-ignore
+import timeline_28_2024_apostilamento from "../assets/images/timeline_28_2024_apostilamento.svg";
+// @ts-ignore
+import timeline_60_2023_monobloco from "../assets/images/timeline_60_2023_monobloco.svg";
+// @ts-ignore
+import timeline_37_2024 from "../assets/images/timeline_37_2024.svg";
+// @ts-ignore
+import quanta_capa_marica from "../assets/images/quanta_capa_marica.svg";
+// @ts-ignore
+import quanta_papel_timbrado from "../assets/images/quanta_papel_timbrado.svg";
+
+export { quanta_capa_marica, quanta_papel_timbrado, timeline_28_2024_apostilamento };
+
 export const INITIAL_USERS: UserProfile[] = [
   {
     id: "user-vinicius",
@@ -68,6 +91,7 @@ export const INITIAL_OBRAS: Obra[] = [
     prazoExecucaoInicial: "8 meses",
     dataInicio: "23/10/2023",
     valorContratualInicial: 4386697.66,
+    imagemCronologia: timeline_60_2023_monobloco,
     
     valorContratualAtual: 4386697.66,
     prazoVigenciaAtual: "34 meses",
@@ -194,6 +218,7 @@ export const INITIAL_OBRAS: Obra[] = [
     prazoExecucaoInicial: "1 ano e 3 meses (15 meses)",
     dataInicio: "01/11/2023",
     valorContratualInicial: 39760239.33,
+    imagemCronologia: timeline_62_2023,
     
     valorContratualAtual: 49673217.10,
     prazoVigenciaAtual: "36 meses",
@@ -334,6 +359,7 @@ export const INITIAL_OBRAS: Obra[] = [
     prazoExecucaoInicial: "1 ano e 3 meses (15 meses)",
     dataInicio: "30/08/2024",
     valorContratualInicial: 36262093.15,
+    imagemCronologia: timeline_30_2024,
     
     valorContratualAtual: 36262093.15,
     prazoVigenciaAtual: "24 meses",
@@ -423,6 +449,7 @@ export const INITIAL_OBRAS: Obra[] = [
     prazoExecucaoInicial: "6 meses",
     dataInicio: "03/07/2025",
     valorContratualInicial: 4063116.23,
+    imagemCronologia: timeline_07_2024,
     
     valorContratualAtual: 4063116.23,
     prazoVigenciaAtual: "16 meses",
@@ -510,6 +537,7 @@ export const INITIAL_OBRAS: Obra[] = [
     prazoExecucaoInicial: "6 meses",
     dataInicio: "01/10/2024",
     valorContratualInicial: 38893104.07,
+    imagemCronologia: timeline_37_2024,
     
     valorContratualAtual: 56446080.80,
     prazoVigenciaAtual: "21 meses",
@@ -601,6 +629,7 @@ export const INITIAL_OBRAS: Obra[] = [
     prazoExecucaoInicial: "10 meses",
     dataInicio: "13/08/2025",
     valorContratualInicial: 24285579.96,
+    imagemCronologia: timeline_32_2025,
     
     valorContratualAtual: 24285579.96,
     prazoVigenciaAtual: "13 meses",
@@ -653,6 +682,7 @@ export const INITIAL_OBRAS: Obra[] = [
     prazoExecucaoInicial: "8 meses",
     dataInicio: "30/08/2024",
     valorContratualInicial: 61736575.00,
+    imagemCronologia: timeline_28_2024_aditivos,
     
     valorContratualAtual: 61736575.00,
     prazoVigenciaAtual: "24 meses",

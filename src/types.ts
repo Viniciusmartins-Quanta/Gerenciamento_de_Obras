@@ -70,6 +70,13 @@ export interface Obra {
   
   aditivos: Aditivo[];
   relatoriosSemanais: WeeklyReport[];
+  fotosGerais?: {
+    id: string;
+    url: string;
+    legenda: string;
+    dataUpload: string;
+    usuario: string;
+  }[];
   
   // General status
   percentualFisicoAtual: number;
