@@ -314,37 +314,26 @@ export function saveRevisions(revisions: Revision[]) {
   }
 }
 
-export function getCurrentUser(): UserProfile {
+export function getCurrentUser(): UserProfile | null {
   try {
     const user = localStorage.getItem("current_user");
     if (!user) {
-      localStorage.setItem("current_user", JSON.stringify(INITIAL_USERS[0]));
-      return INITIAL_USERS[0];
+      return null;
     }
     const parsed = JSON.parse(user);
     if (!parsed || typeof parsed !== "object") {
-      localStorage.setItem("current_user", JSON.stringify(INITIAL_USERS[0]));
-      return INITIAL_USERS[0];
+      return null;
     }
     
     // If cached current user is Andreia, migrate automatically to Vinicius
     if (parsed.id === "user-andreia" || parsed.email === "andreia.paula@quantaconsultoria.com") {
-      localStorage.setItem("current_user", JSON.stringify(INITIAL_USERS[0]));
-      return INITIAL_USERS[0];
+      return null;
     }
 
-    const exists = INITIAL_USERS.some(u => u.id === parsed.id) || (typeof parsed.id === "string" && parsed.id.startsWith("eng-"));
-    if (!exists) {
-      localStorage.setItem("current_user", JSON.stringify(INITIAL_USERS[0]));
-      return INITIAL_USERS[0];
-    }
     return parsed;
   } catch (e) {
     console.error("Erro ao recuperar o usuário atual:", e);
-    try {
-      localStorage.setItem("current_user", JSON.stringify(INITIAL_USERS[0]));
-    } catch {}
-    return INITIAL_USERS[0];
+    return null;
   }
 }
 

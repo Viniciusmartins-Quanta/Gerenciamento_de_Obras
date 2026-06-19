@@ -174,9 +174,9 @@ export function getDeadlineStatus(obra: Obra): DeadlineStatusInfo {
 export default function App() {
   // DB States
   const [obras, setObras] = useState<Obra[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => getCurrentUser() !== null);
   const [revisions, setRevisions] = useState<Revision[]>([]);
 
   // Navigation / UI States
@@ -1341,6 +1341,23 @@ export default function App() {
                   Ambiente: CT 026 - Supervisão
                 </div>
               </div>
+              <button
+                onClick={() => {
+                  const confirmed = window.confirm("Deseja realmente sair do painel e encerrar sua sessão segura?");
+                  if (confirmed) {
+                    localStorage.removeItem("current_user");
+                    sessionStorage.removeItem("auth_session_active");
+                    setIsAuthenticated(false);
+                    setCurrentUser(null);
+                    supabase.auth.signOut().catch(() => {});
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 border border-rose-900/40 hover:border-rose-700 bg-rose-950/20 hover:bg-rose-900/30 text-rose-400 hover:text-rose-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer"
+                title="Encerrar Sessão Segura"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sair do Sistema
+              </button>
             </>
           )}
         </div>
@@ -1386,6 +1403,22 @@ export default function App() {
                     <span className="hidden sm:inline font-bold text-[11px]">Sincronizado</span>
                     <span className="font-mono text-[9px] text-emerald-600 border-l border-emerald-250 pl-1.5 leading-none">CT 026</span>
                   </div>
+                  <button
+                    onClick={() => {
+                      const confirmed = window.confirm("Deseja realmente sair do painel?");
+                      if (confirmed) {
+                        localStorage.removeItem("current_user");
+                        sessionStorage.removeItem("auth_session_active");
+                        setIsAuthenticated(false);
+                        setCurrentUser(null);
+                        supabase.auth.signOut().catch(() => {});
+                      }
+                    }}
+                    className="p-3 bg-red-100/80 hover:bg-red-100 border border-red-150 text-red-600 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0"
+                    title="Sair"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
                 </>
               )}
             </div>
