@@ -5,6 +5,8 @@ import {
   getSavedRevisions, saveRevisions, getCurrentUser, saveCurrentUser,
   quanta_capa_marica, quanta_papel_timbrado
 } from "./data/mockData";
+import { supabaseLoadObras, supabaseLoadAuditLogs, supabaseLoadRevisions } from "./utils/supabaseDb";
+import { supabase } from "./utils/supabaseClient";
 import { 
   getOnlineObras, syncObrasToCloud, getOnlineLogs, 
   syncLogsToCloud, getOnlineRevisions, deleteIndividualObraOnline,
@@ -174,7 +176,9 @@ export default function App() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem("auth_session_active") === "true";
+  });
   const [revisions, setRevisions] = useState<Revision[]>([]);
 
   // Navigation / UI States
@@ -255,6 +259,15 @@ export default function App() {
       localStorage.setItem("pdfTimbradoImage", quanta_papel_timbrado);
     }
 
+    // One-time initial reset to clear all works cards (from local & online) to satisfy the user request.
+    if (!localStorage.getItem("obras_cleared_initial_v2")) {
+      localStorage.setItem("obras_db", "[]");
+      localStorage.setItem("obras_cleared_initial_v2", "true");
+      for (let i = 1; i <= 7; i++) {
+        deleteIndividualObraOnline(`obra-${i}`).catch(() => {});
+      }
+    }
+
     const localObras = getSavedObras();
     const localLogs = getSavedLogs();
     const localRevisions = getSavedRevisions();
@@ -312,6 +325,45 @@ export default function App() {
 
     loadAndSyncFromCloud();
   }, []);
+
+  // Whenever the authenticated user changes, fetch and sync their Supabase records
+  useEffect(() => {
+    if (isAuthenticated && currentUser?.id) {
+      const fetchSupabaseData = async () => {
+        try {
+          console.log(`[Supabase Sync] Baixando dados de nuvem de ${currentUser.name} (${currentUser.id})`);
+          
+          // 1. Obras
+          const syncedObras = await supabaseLoadObras(currentUser.id);
+          if (syncedObras !== null && syncedObras.length > 0) {
+            console.log(`[Supabase Sync] ${syncedObras.length} obras obtidas.`);
+            setObras(syncedObras);
+            localStorage.setItem("obras_db", JSON.stringify(syncedObras));
+          }
+
+          // 2. Audit Logs
+          const syncedLogs = await supabaseLoadAuditLogs(currentUser.id);
+          if (syncedLogs !== null && syncedLogs.length > 0) {
+            console.log(`[Supabase Sync] ${syncedLogs.length} logs obtidos.`);
+            setAuditLogs(syncedLogs);
+            localStorage.setItem("logs_db", JSON.stringify(syncedLogs.slice(0, 50)));
+          }
+
+          // 3. Revisions
+          const syncedRevisions = await supabaseLoadRevisions(currentUser.id);
+          if (syncedRevisions !== null && syncedRevisions.length > 0) {
+            console.log(`[Supabase Sync] ${syncedRevisions.length} revisões obtidas.`);
+            setRevisions(syncedRevisions);
+            localStorage.setItem("revisions_db", JSON.stringify(syncedRevisions.slice(-8)));
+          }
+        } catch (syncErr) {
+          console.warn("Falha ao sincronizar dados iniciais do Supabase:", syncErr);
+        }
+      };
+
+      fetchSupabaseData();
+    }
+  }, [isAuthenticated, currentUser?.id]);
 
   // Real-time synchronization listeners for live updates when online
   useEffect(() => {
@@ -1251,11 +1303,30 @@ export default function App() {
         {/* Active User profile at bottom of sidebar */}
         <div className="p-4 border-t border-slate-800 space-y-2">
           {currentUser && (
-            <UserAuth 
-              currentUser={currentUser} 
-              onUserChange={handleUserChange}
-              onUserCreated={handleUserCreated}
-            />
+            <>
+              <UserAuth 
+                currentUser={currentUser} 
+                onUserChange={handleUserChange}
+                onUserCreated={handleUserCreated}
+              />
+              <button
+                onClick={() => {
+                  const confirmed = window.confirm("Deseja realmente sair do painel e encerrar sua sessão segura?");
+                  if (confirmed) {
+                    sessionStorage.removeItem("auth_session_active");
+                    localStorage.removeItem("current_user");
+                    setIsAuthenticated(false);
+                    setCurrentUser(null);
+                    supabase.auth.signOut().catch(() => {});
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 border border-rose-900/40 hover:border-rose-700 bg-rose-950/20 hover:bg-rose-955/40 text-rose-400 hover:text-rose-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer"
+                title="Encerrar Sessão Segura"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sair do Sistema
+              </button>
+            </>
           )}
         </div>
       </aside>
@@ -1286,11 +1357,29 @@ export default function App() {
           <div className="flex items-center gap-4">
             <div className="lg:hidden flex-1 sm:flex-none flex items-center gap-2">
               {currentUser && (
-                <UserAuth 
-                  currentUser={currentUser} 
-                  onUserChange={handleUserChange}
-                  onUserCreated={handleUserCreated}
-                />
+                <>
+                  <UserAuth 
+                    currentUser={currentUser} 
+                    onUserChange={handleUserChange}
+                    onUserCreated={handleUserCreated}
+                  />
+                  <button
+                    onClick={() => {
+                      const confirmed = window.confirm("Deseja realmente sair do painel?");
+                      if (confirmed) {
+                        sessionStorage.removeItem("auth_session_active");
+                        localStorage.removeItem("current_user");
+                        setIsAuthenticated(false);
+                        setCurrentUser(null);
+                        supabase.auth.signOut().catch(() => {});
+                      }
+                    }}
+                    className="p-3 bg-red-100/80 hover:bg-red-100 border border-red-150 text-red-600 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0"
+                    title="Sair"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </>
               )}
             </div>
           </div>
