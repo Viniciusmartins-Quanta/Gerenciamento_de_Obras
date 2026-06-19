@@ -130,17 +130,9 @@ export default function UserAuth({ currentUser, onUserChange, onUserCreated }: U
       return;
     }
 
-    setSelectedUserToSwitch(user);
-    setSwitchPassword("");
-    setSwitchConfirmPassword("");
-    setSwitchError("");
-    setShowSwitchPasswordFields(false);
-    setShowSwitchPassword(false);
-    setShowSwitchConfirmPassword(false);
-    
-    const hasPwd = userHasPassword(user.email);
-    setIsNewUserSetup(!hasPwd);
-    setShowPasswordPrompt(true);
+    // Switch profile immediately without password verification
+    onUserChange(user);
+    setShowSwitchModal(false);
   };
 
   const handleConfirmSwitch = (e: React.FormEvent) => {
@@ -267,7 +259,7 @@ export default function UserAuth({ currentUser, onUserChange, onUserCreated }: U
                   Controle de Acesso / Perfis
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Selecione um engenheiro registrado. Para trocar, será necessária a correspondente senha de acesso.
+                  Selecione um engenheiro registrado. Troque de perfil instantaneamente com um clique.
                 </p>
               </div>
               <button 

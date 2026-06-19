@@ -8,30 +8,26 @@ service cloud2.firestore {
     }
 
     // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     // Obras matching configuration
     match /obras/{obraId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(obraId);
+      allow read: if true;
+      allow write: if isValidId(obraId);
     }
 
     // Audit logs tracking
     match /auditLogs/{logId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(logId);
+      allow read: if true;
+      allow write: if isValidId(logId);
     }
 
     // Revisions rollback logs
     match /revisions/{revisionId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && isValidId(revisionId);
+      allow read: if true;
+      allow write: if isValidId(revisionId);
     }
   }
 }

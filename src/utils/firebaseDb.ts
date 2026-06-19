@@ -5,7 +5,8 @@ import {
   setDoc, 
   getDoc,
   deleteDoc,
-  writeBatch
+  writeBatch,
+  onSnapshot
 } from "firebase/firestore";
 import { db, auth } from "./firebaseAuth";
 import { Obra, AuditLog, Revision } from "../types";
@@ -238,4 +239,55 @@ export async function saveIndividualRevisionOnline(revision: Revision): Promise<
     }
     return false;
   }
+}
+
+/**
+ * Sets up a continuous live listener on the obras collection.
+ */
+export function listenToCloudObras(onUpdate: (obras: Obra[]) => void) {
+  const path = "obras";
+  return onSnapshot(collection(db, path), (qSnapshot) => {
+    if (qSnapshot.empty) return;
+    const list: Obra[] = [];
+    qSnapshot.forEach((doc) => {
+      list.push(doc.data() as Obra);
+    });
+    onUpdate(list);
+  }, (error) => {
+    console.warn("Erro no listener de obras do Firestore (modo offline ou sem acesso):", error);
+  });
+}
+
+/**
+ * Sets up a continuous live listener on the auditLogs collection.
+ */
+export function listenToCloudLogs(onUpdate: (logs: AuditLog[]) => void) {
+  const path = "auditLogs";
+  return onSnapshot(collection(db, path), (qSnapshot) => {
+    if (qSnapshot.empty) return;
+    const list: AuditLog[] = [];
+    qSnapshot.forEach((doc) => {
+      list.push(doc.data() as AuditLog);
+    });
+    onUpdate(list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+  }, (error) => {
+    console.warn("Erro no listener de logs do Firestore:", error);
+  });
+}
+
+/**
+ * Sets up a continuous live listener on the revisions collection.
+ */
+export function listenToCloudRevisions(onUpdate: (revisions: Revision[]) => void) {
+  const path = "revisions";
+  return onSnapshot(collection(db, path), (qSnapshot) => {
+    if (qSnapshot.empty) return;
+    const list: Revision[] = [];
+    qSnapshot.forEach((doc) => {
+      list.push(doc.data() as Revision);
+    });
+    onUpdate(list);
+  }, (error) => {
+    console.warn("Erro no listener de revisões do Firestore:", error);
+  });
 }

@@ -7,7 +7,8 @@ import {
 } from "./data/mockData";
 import { 
   getOnlineObras, syncObrasToCloud, getOnlineLogs, 
-  syncLogsToCloud, getOnlineRevisions, deleteIndividualObraOnline 
+  syncLogsToCloud, getOnlineRevisions, deleteIndividualObraOnline,
+  listenToCloudObras, listenToCloudLogs, listenToCloudRevisions
 } from "./utils/firebaseDb";
 import { exportObrasToExcel } from "./utils/excelGenerator";
 import { generateConsolidatedWeeklyPDF } from "./utils/pdfGenerator";
@@ -173,9 +174,7 @@ export default function App() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem("auth_session_active") === "true";
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [revisions, setRevisions] = useState<Revision[]>([]);
 
   // Navigation / UI States
@@ -185,6 +184,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"dashboard" | "logs" | "settings" | "images">("dashboard");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusGeralFilter] = useState<string>("TODOS");
+  const [obraIdToDelete, setObraIdToDelete] = useState<string | null>(null);
 
   // Image repository picker modal states
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
@@ -313,6 +313,39 @@ export default function App() {
     loadAndSyncFromCloud();
   }, []);
 
+  // Real-time synchronization listeners for live updates when online
+  useEffect(() => {
+    console.log("Registrando listeners de sincronização em tempo real com o Firestore...");
+    
+    const unsubscribeObras = listenToCloudObras((cloudObras) => {
+      if (cloudObras && cloudObras.length > 0) {
+        setObras(cloudObras);
+        // Save to local storage for offline support
+        localStorage.setItem("obras_db", JSON.stringify(cloudObras));
+      }
+    });
+
+    const unsubscribeLogs = listenToCloudLogs((cloudLogs) => {
+      if (cloudLogs && cloudLogs.length > 0) {
+        setAuditLogs(cloudLogs);
+        localStorage.setItem("logs_db", JSON.stringify(cloudLogs));
+      }
+    });
+
+    const unsubscribeRevisions = listenToCloudRevisions((cloudRevisions) => {
+      if (cloudRevisions && cloudRevisions.length > 0) {
+        setRevisions(cloudRevisions);
+        localStorage.setItem("revisions_db", JSON.stringify(cloudRevisions));
+      }
+    });
+
+    return () => {
+      unsubscribeObras();
+      unsubscribeLogs();
+      unsubscribeRevisions();
+    };
+  }, []);
+
   // Listen for custom settings events to register audit logs silently
   useEffect(() => {
     const handleEventLog = (e: Event) => {
@@ -434,12 +467,12 @@ export default function App() {
 
   // DELETE CONTRACT WORK
   const handleDeleteObra = async (obraId: string) => {
+    setObraIdToDelete(obraId);
+  };
+
+  const confirmDeleteObra = async (obraId: string) => {
     const parentObra = obras.find(o => o.id === obraId);
     if (!parentObra) return;
-
-    if (!window.confirm(`Deseja realmente excluir permanentemente o contrato de obra Nº ${parentObra.contratoNo}?\nEsta ação não poderá ser desfeita.`)) {
-      return;
-    }
 
     const updatedObras = obras.filter(o => o.id !== obraId);
     setObras(updatedObras);
@@ -1224,16 +1257,6 @@ export default function App() {
               onUserCreated={handleUserCreated}
             />
           )}
-          <button
-            onClick={() => {
-              sessionStorage.removeItem("auth_session_active");
-              setIsAuthenticated(false);
-            }}
-            className="w-full bg-slate-800/40 hover:bg-red-950/40 text-red-400 hover:text-red-300 text-[11px] font-bold py-2 px-3 rounded-xl border border-slate-800 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Desconectar Sessão
-          </button>
         </div>
       </aside>
 
@@ -1269,16 +1292,6 @@ export default function App() {
                   onUserCreated={handleUserCreated}
                 />
               )}
-              <button
-                onClick={() => {
-                  sessionStorage.removeItem("auth_session_active");
-                  setIsAuthenticated(false);
-                }}
-                title="Desconectar"
-                className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-red-500 p-2.5 rounded-xl transition-all cursor-pointer"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
             </div>
           </div>
         </header>
@@ -1630,6 +1643,52 @@ export default function App() {
         )}
 
       </main>
+
+      {/* CUSTOM OVERLAY DELETE CONTRACT WORK CONFIRMATION */}
+      {obraIdToDelete && (() => {
+        const obraToDelete = obras.find(o => o.id === obraIdToDelete);
+        if (!obraToDelete) return null;
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200" id="custom-delete-confirmation-overlay">
+            <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-150 p-6">
+              <div className="flex items-center gap-3 text-rose-600 mb-4">
+                <div className="p-2.5 bg-rose-50 rounded-xl">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-tight">Confirmar Exclusão</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed font-semibold">
+                Deseja realmente excluir permanentemente o contrato de obra Nº <span className="font-extrabold text-slate-800 font-mono bg-slate-50 px-1 border border-slate-200 rounded">{obraToDelete.contratoNo}</span>?
+              </p>
+              <p className="text-[11px] text-rose-500 mt-2 font-bold leading-relaxed">
+                Esta ação excluirá todos os relatórios semanais, medições e dados online. Ela é irreversível e será sincronizada para todos os usuários imediatamente.
+              </p>
+              <div className="flex justify-end gap-2.5 mt-5">
+                <button
+                  type="button"
+                  onClick={() => setObraIdToDelete(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  id="confirm-delete-obra-btn"
+                  onClick={async () => {
+                    const targetId = obraIdToDelete;
+                    setObraIdToDelete(null);
+                    await confirmDeleteObra(targetId);
+                  }}
+                  className="px-4 py-2 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-500 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Sim, Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* CREATE WORK DIALOG */}
       {showWorkModal && (
