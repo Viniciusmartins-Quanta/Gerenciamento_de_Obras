@@ -159,10 +159,7 @@ export function saveObras(obras: Obra[]) {
 
   // Sync to Supabase
   try {
-    const user = getCurrentUser();
-    if (user && user.id) {
-      supabaseSaveObras(user.id, obras).catch((err) => console.warn("Erro Supabase:", err));
-    }
+    supabaseSaveObras("ct-026-supervisao", obras).catch((err) => console.warn("Erro Supabase:", err));
   } catch (e) {
     console.warn("Erro ao sincronizar obras com Supabase:", e);
   }
@@ -228,10 +225,7 @@ export function saveLogs(logs: AuditLog[]) {
     saveIndividualLogOnline(logs[0]).catch((err) => console.warn("Erro de sincronização em nuvem de log de auditoria:", err));
   }
   try {
-    const user = getCurrentUser();
-    if (user && user.id) {
-      supabaseSaveAuditLogs(user.id, logs).catch((err) => console.warn("Erro Supabase logs:", err));
-    }
+    supabaseSaveAuditLogs("ct-026-supervisao", logs).catch((err) => console.warn("Erro Supabase logs:", err));
   } catch (e) {
     console.warn("Erro ao sincronizar logs com Supabase:", e);
   }
@@ -285,10 +279,7 @@ export function saveRevisions(revisions: Revision[]) {
     saveIndividualRevisionOnline(revisions[revisions.length - 1]).catch((err) => console.warn("Erro de sincronização em nuvem de histórico:", err));
   }
   try {
-    const user = getCurrentUser();
-    if (user && user.id) {
-      supabaseSaveRevisions(user.id, revisions).catch((err) => console.warn("Erro Supabase revisions:", err));
-    }
+    supabaseSaveRevisions("ct-026-supervisao", revisions).catch((err) => console.warn("Erro Supabase revisions:", err));
   } catch (e) {
     console.warn("Erro ao sincronizar revisões com Supabase:", e);
   }

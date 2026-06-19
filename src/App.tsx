@@ -176,9 +176,7 @@ export default function App() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem("auth_session_active") === "true";
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [revisions, setRevisions] = useState<Revision[]>([]);
 
   // Navigation / UI States
@@ -326,44 +324,67 @@ export default function App() {
     loadAndSyncFromCloud();
   }, []);
 
-  // Whenever the authenticated user changes, fetch and sync their Supabase records
+  // Whenever the app mounts, setup initial fetch and automatic real-time background sync for 'ct-026-supervisao'
   useEffect(() => {
-    if (isAuthenticated && currentUser?.id) {
-      const fetchSupabaseData = async () => {
-        try {
-          console.log(`[Supabase Sync] Baixando dados de nuvem de ${currentUser.name} (${currentUser.id})`);
-          
-          // 1. Obras
-          const syncedObras = await supabaseLoadObras(currentUser.id);
-          if (syncedObras !== null && syncedObras.length > 0) {
-            console.log(`[Supabase Sync] ${syncedObras.length} obras obtidas.`);
-            setObras(syncedObras);
-            localStorage.setItem("obras_db", JSON.stringify(syncedObras));
-          }
-
-          // 2. Audit Logs
-          const syncedLogs = await supabaseLoadAuditLogs(currentUser.id);
-          if (syncedLogs !== null && syncedLogs.length > 0) {
-            console.log(`[Supabase Sync] ${syncedLogs.length} logs obtidos.`);
-            setAuditLogs(syncedLogs);
-            localStorage.setItem("logs_db", JSON.stringify(syncedLogs.slice(0, 50)));
-          }
-
-          // 3. Revisions
-          const syncedRevisions = await supabaseLoadRevisions(currentUser.id);
-          if (syncedRevisions !== null && syncedRevisions.length > 0) {
-            console.log(`[Supabase Sync] ${syncedRevisions.length} revisões obtidas.`);
-            setRevisions(syncedRevisions);
-            localStorage.setItem("revisions_db", JSON.stringify(syncedRevisions.slice(-8)));
-          }
-        } catch (syncErr) {
-          console.warn("Falha ao sincronizar dados iniciais do Supabase:", syncErr);
+    const fetchSharedSupabaseData = async () => {
+      try {
+        // 1. Load Obras
+        const syncedObras = await supabaseLoadObras("ct-026-supervisao");
+        if (syncedObras !== null && syncedObras.length > 0) {
+          setObras(prevObras => {
+            const currentStr = JSON.stringify(prevObras);
+            const fetchedStr = JSON.stringify(syncedObras);
+            if (currentStr !== fetchedStr) {
+              console.log("[Supabase Automated Sync] Atualizando obras com alterações de outros usuários...");
+              localStorage.setItem("obras_db", fetchedStr);
+              return syncedObras;
+            }
+            return prevObras;
+          });
         }
-      };
 
-      fetchSupabaseData();
-    }
-  }, [isAuthenticated, currentUser?.id]);
+        // 2. Load Audit Logs
+        const syncedLogs = await supabaseLoadAuditLogs("ct-026-supervisao");
+        if (syncedLogs !== null && syncedLogs.length > 0) {
+          setAuditLogs(prevLogs => {
+            const currentStr = JSON.stringify(prevLogs);
+            const fetchedStr = JSON.stringify(syncedLogs);
+            if (currentStr !== fetchedStr) {
+              console.log("[Supabase Automated Sync] Atualizando logs com alterações de outros usuários...");
+              localStorage.setItem("logs_db", JSON.stringify(syncedLogs.slice(0, 50)));
+              return syncedLogs;
+            }
+            return prevLogs;
+          });
+        }
+
+        // 3. Load Revisions
+        const syncedRevisions = await supabaseLoadRevisions("ct-026-supervisao");
+        if (syncedRevisions !== null && syncedRevisions.length > 0) {
+          setRevisions(prevRevisions => {
+            const currentStr = JSON.stringify(prevRevisions);
+            const fetchedStr = JSON.stringify(syncedRevisions);
+            if (currentStr !== fetchedStr) {
+              console.log("[Supabase Automated Sync] Atualizando revisões com alterações de outros usuários...");
+              localStorage.setItem("revisions_db", JSON.stringify(syncedRevisions.slice(-8)));
+              return syncedRevisions;
+            }
+            return prevRevisions;
+          });
+        }
+      } catch (syncErr) {
+        console.warn("Falha ao sincronizar dados em tempo real do Supabase:", syncErr);
+      }
+    };
+
+    // Immediate execution on mount
+    fetchSharedSupabaseData();
+
+    // Set up continuous automatic background updates (every 5 seconds)
+    const intervalId = setInterval(fetchSharedSupabaseData, 5000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   // Real-time synchronization listeners for live updates when online
   useEffect(() => {
@@ -1200,8 +1221,8 @@ export default function App() {
             <Building2 className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-black tracking-widest text-orange-400 block leading-tight">CODEMAR</span>
-            <span className="text-white font-bold text-xs tracking-tight">Painel de Engenharia</span>
+            <span className="text-[10px] uppercase font-black tracking-widest text-orange-400 block leading-tight">CT 026 - SUPERVISÃO</span>
+            <span className="text-white font-bold text-xs tracking-tight">Painel de Fiscalização</span>
           </div>
         </div>
 
@@ -1309,23 +1330,17 @@ export default function App() {
                 onUserChange={handleUserChange}
                 onUserCreated={handleUserCreated}
               />
-              <button
-                onClick={() => {
-                  const confirmed = window.confirm("Deseja realmente sair do painel e encerrar sua sessão segura?");
-                  if (confirmed) {
-                    sessionStorage.removeItem("auth_session_active");
-                    localStorage.removeItem("current_user");
-                    setIsAuthenticated(false);
-                    setCurrentUser(null);
-                    supabase.auth.signOut().catch(() => {});
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 border border-rose-900/40 hover:border-rose-700 bg-rose-950/20 hover:bg-rose-955/40 text-rose-400 hover:text-rose-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer"
-                title="Encerrar Sessão Segura"
+              <div 
+                className="w-full flex flex-col gap-1.5 items-center justify-center mt-2 px-3 py-2.5 border border-emerald-700/30 bg-emerald-950/20 text-emerald-400 text-[10px] font-mono leading-tight rounded-xl"
               >
-                <LogOut className="h-3.5 w-3.5" />
-                Sair do Sistema
-              </button>
+                <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[9px] text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Nuvem Sincronizada
+                </div>
+                <div className="text-slate-400 font-sans text-[10px] font-semibold text-center">
+                  Ambiente: CT 026 - Supervisão
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -1363,22 +1378,14 @@ export default function App() {
                     onUserChange={handleUserChange}
                     onUserCreated={handleUserCreated}
                   />
-                  <button
-                    onClick={() => {
-                      const confirmed = window.confirm("Deseja realmente sair do painel?");
-                      if (confirmed) {
-                        sessionStorage.removeItem("auth_session_active");
-                        localStorage.removeItem("current_user");
-                        setIsAuthenticated(false);
-                        setCurrentUser(null);
-                        supabase.auth.signOut().catch(() => {});
-                      }
-                    }}
-                    className="p-3 bg-red-100/80 hover:bg-red-100 border border-red-150 text-red-600 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0"
-                    title="Sair"
+                  <div 
+                    className="px-2.5 py-2 bg-emerald-50 text-emerald-700 border border-emerald-150 rounded-xl flex items-center gap-1.5 shrink-0 text-xs font-semibold"
+                    title="Nuvem Sincronizada"
                   >
-                    <LogOut className="h-4 w-4" />
-                  </button>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    <span className="hidden sm:inline font-bold text-[11px]">Sincronizado</span>
+                    <span className="font-mono text-[9px] text-emerald-600 border-l border-emerald-250 pl-1.5 leading-none">CT 026</span>
+                  </div>
                 </>
               )}
             </div>

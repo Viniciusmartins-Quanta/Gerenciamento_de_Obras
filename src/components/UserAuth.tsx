@@ -332,11 +332,6 @@ export default function UserAuth({ currentUser, onUserChange, onUserCreated }: U
                     <div className="min-w-0 flex-1 pr-2">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-xs text-slate-800 truncate">{user.name}</span>
-                        {!userHasPw && (
-                          <span className="text-[8px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">
-                            Falta Ativar
-                          </span>
-                        )}
                       </div>
                       <div className="text-slate-450 text-[10px] truncate font-mono mt-0.5">{user.email}</div>
                     </div>
