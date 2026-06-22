@@ -321,3 +321,24 @@ export async function supabaseLoadRevisions(userId: string): Promise<Revision[] 
     return null;
   }
 }
+
+/**
+ * Deletes a single Obra from Supabase.
+ */
+export async function supabaseDeleteObra(obraId: string): Promise<boolean> {
+  if (!obraId) return false;
+  try {
+    const { error } = await supabase
+      .from("obras")
+      .delete()
+      .eq("id", obraId);
+    if (error) {
+      console.warn("Tabela 'obras' pode não aceitar deleção direta, mas atualizaremos por sincronização do array completo na tabela de backup.", error.message);
+    }
+    return true;
+  } catch (err) {
+    console.warn("Erro de conexão ao remover obra no Supabase:", err);
+    return false;
+  }
+}
+

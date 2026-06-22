@@ -1,6 +1,5 @@
 import { UserProfile, UserRole, Obra, AuditLog, Revision } from "../types";
 import { pruneObraForSnapshot, pruneObrasProgressively } from "../utils/compressor";
-import { syncObrasToCloud, saveIndividualLogOnline, saveIndividualRevisionOnline } from "../utils/firebaseDb";
 import { supabaseSaveObras, supabaseSaveAuditLogs, supabaseSaveRevisions } from "../utils/supabaseDb";
 
 // @ts-ignore
@@ -154,9 +153,6 @@ export function getSavedObras(): Obra[] {
 }
 
 export function saveObras(obras: Obra[]) {
-  // Synchronize entire unpruned dataset to Firebase Firestore cloud database
-  syncObrasToCloud(obras).catch((err) => console.warn("Erro de sincronização em nuvem de obras:", err));
-
   // Sync to Supabase
   try {
     supabaseSaveObras("ct-026-supervisao", obras).catch((err) => console.warn("Erro Supabase:", err));
@@ -221,9 +217,6 @@ export function getSavedLogs(): AuditLog[] {
 }
 
 export function saveLogs(logs: AuditLog[]) {
-  if (logs.length > 0) {
-    saveIndividualLogOnline(logs[0]).catch((err) => console.warn("Erro de sincronização em nuvem de log de auditoria:", err));
-  }
   try {
     supabaseSaveAuditLogs("ct-026-supervisao", logs).catch((err) => console.warn("Erro Supabase logs:", err));
   } catch (e) {
@@ -275,9 +268,6 @@ export function getSavedRevisions(): Revision[] {
 }
 
 export function saveRevisions(revisions: Revision[]) {
-  if (revisions.length > 0) {
-    saveIndividualRevisionOnline(revisions[revisions.length - 1]).catch((err) => console.warn("Erro de sincronização em nuvem de histórico:", err));
-  }
   try {
     supabaseSaveRevisions("ct-026-supervisao", revisions).catch((err) => console.warn("Erro Supabase revisions:", err));
   } catch (e) {

@@ -5,13 +5,11 @@ import {
   getSavedRevisions, saveRevisions, getCurrentUser, saveCurrentUser,
   quanta_capa_marica, quanta_papel_timbrado
 } from "./data/mockData";
-import { supabaseLoadObras, supabaseLoadAuditLogs, supabaseLoadRevisions } from "./utils/supabaseDb";
-import { supabase } from "./utils/supabaseClient";
 import { 
-  getOnlineObras, syncObrasToCloud, getOnlineLogs, 
-  syncLogsToCloud, getOnlineRevisions, deleteIndividualObraOnline,
-  listenToCloudObras, listenToCloudLogs, listenToCloudRevisions
-} from "./utils/firebaseDb";
+  supabaseLoadObras, supabaseLoadAuditLogs, supabaseLoadRevisions, supabaseDeleteObra,
+  supabaseSaveObras, supabaseSaveAuditLogs, supabaseSaveRevisions 
+} from "./utils/supabaseDb";
+import { supabase } from "./utils/supabaseClient";
 import { exportObrasToExcel } from "./utils/excelGenerator";
 import { generateConsolidatedWeeklyPDF } from "./utils/pdfGenerator";
 import UserAuth from "./components/UserAuth";
@@ -247,7 +245,7 @@ export default function App() {
       });
   };
 
-  // Load from database on startup with Firestore syncdown fallbacks
+  // Load from database on startup
   useEffect(() => {
     // Seed default Capa and Timbrado from clean SVG templates if not present
     if (!localStorage.getItem("pdfCapaImage")) {
@@ -255,15 +253,6 @@ export default function App() {
     }
     if (!localStorage.getItem("pdfTimbradoImage")) {
       localStorage.setItem("pdfTimbradoImage", quanta_papel_timbrado);
-    }
-
-    // One-time initial reset to clear all works cards (from local & online) to satisfy the user request.
-    if (!localStorage.getItem("obras_cleared_initial_v2")) {
-      localStorage.setItem("obras_db", "[]");
-      localStorage.setItem("obras_cleared_initial_v2", "true");
-      for (let i = 1; i <= 7; i++) {
-        deleteIndividualObraOnline(`obra-${i}`).catch(() => {});
-      }
     }
 
     const localObras = getSavedObras();
@@ -274,59 +263,11 @@ export default function App() {
     setAuditLogs(localLogs);
     setRevisions(localRevisions);
     setCurrentUser(getCurrentUser());
-
-    // Asynchronously update/synchronize structures in background
-    async function loadAndSyncFromCloud() {
-      try {
-        console.log("Iniciando verificação de banco de dados na nuvem...");
-        const cloudObras = await getOnlineObras();
-        
-        if (cloudObras !== null) {
-          if (cloudObras.length === 0) {
-            // Cloud is empty. If local has works, seed cloud with local data immediately!
-            console.log("Banco de dados na nuvem vazio. Semeando dados locais no Firestore.");
-            await syncObrasToCloud(localObras);
-            if (localLogs.length > 0) {
-              await syncLogsToCloud(localLogs);
-            }
-          } else {
-            // Cloud has data. Check if local dev storage is ahead (e.g. they created 9 works locally)
-            if (localObras.length > cloudObras.length) {
-              console.log(`Detectada defasagem em nuvem (${cloudObras.length} vs local ${localObras.length}). Atualizando nuvem.`);
-              await syncObrasToCloud(localObras);
-              setObras(localObras);
-            } else {
-              // Otherwise, cloud is the master source of truth!
-              console.log(`Carregados ${cloudObras.length} contratos a partir da nuvem.`);
-              setObras(cloudObras);
-              saveObras(cloudObras); // update local storage cache for subsequent offline boots
-            }
-          }
-        }
-        
-        // Audit logs pull
-        const cloudLogs = await getOnlineLogs();
-        if (cloudLogs !== null && cloudLogs.length > 0) {
-          setAuditLogs(cloudLogs);
-          saveLogs(cloudLogs);
-        }
-        
-        // Revisions pull
-        const cloudRevisions = await getOnlineRevisions();
-        if (cloudRevisions !== null && cloudRevisions.length > 0) {
-          setRevisions(cloudRevisions);
-        }
-      } catch (err) {
-        console.warn("Sincronização com nuvem pendente de autorização ou indisponível.", err);
-      }
-    }
-
-    loadAndSyncFromCloud();
   }, []);
 
   // Whenever the app mounts, setup initial fetch and automatic real-time background sync for 'ct-026-supervisao'
   useEffect(() => {
-    const fetchSharedSupabaseData = async () => {
+    const fetchSharedSupabaseData = async (forceSeedOnEmpty: boolean = false) => {
       try {
         // 1. Load Obras
         const syncedObras = await supabaseLoadObras("ct-026-supervisao");
@@ -341,6 +282,13 @@ export default function App() {
             }
             return prevObras;
           });
+        } else if (forceSeedOnEmpty || (syncedObras !== null && syncedObras.length === 0)) {
+          // Sync current local works list if Supabase has 0 entries
+          const localObras = getSavedObras();
+          if (localObras.length > 0) {
+            console.log("[Supabase Sync] Semeando dados locais no Supabase para ambiente compartilhado...");
+            await supabaseSaveObras("ct-026-supervisao", localObras);
+          }
         }
 
         // 2. Load Audit Logs
@@ -356,6 +304,11 @@ export default function App() {
             }
             return prevLogs;
           });
+        } else if (forceSeedOnEmpty || (syncedLogs !== null && syncedLogs.length === 0)) {
+          const localLogs = getSavedLogs();
+          if (localLogs.length > 0) {
+            await supabaseSaveAuditLogs("ct-026-supervisao", localLogs);
+          }
         }
 
         // 3. Load Revisions
@@ -371,52 +324,24 @@ export default function App() {
             }
             return prevRevisions;
           });
+        } else if (forceSeedOnEmpty || (syncedRevisions !== null && syncedRevisions.length === 0)) {
+          const localRevisions = getSavedRevisions();
+          if (localRevisions.length > 0) {
+            await supabaseSaveRevisions("ct-026-supervisao", localRevisions);
+          }
         }
       } catch (syncErr) {
         console.warn("Falha ao sincronizar dados em tempo real do Supabase:", syncErr);
       }
     };
 
-    // Immediate execution on mount
-    fetchSharedSupabaseData();
+    // Immediate execution on mount (first with seed logic flag true)
+    fetchSharedSupabaseData(true);
 
     // Set up continuous automatic background updates (every 5 seconds)
-    const intervalId = setInterval(fetchSharedSupabaseData, 5000);
+    const intervalId = setInterval(() => fetchSharedSupabaseData(false), 5000);
 
     return () => clearInterval(intervalId);
-  }, []);
-
-  // Real-time synchronization listeners for live updates when online
-  useEffect(() => {
-    console.log("Registrando listeners de sincronização em tempo real com o Firestore...");
-    
-    const unsubscribeObras = listenToCloudObras((cloudObras) => {
-      if (cloudObras && cloudObras.length > 0) {
-        setObras(cloudObras);
-        // Save to local storage for offline support
-        localStorage.setItem("obras_db", JSON.stringify(cloudObras));
-      }
-    });
-
-    const unsubscribeLogs = listenToCloudLogs((cloudLogs) => {
-      if (cloudLogs && cloudLogs.length > 0) {
-        setAuditLogs(cloudLogs);
-        localStorage.setItem("logs_db", JSON.stringify(cloudLogs));
-      }
-    });
-
-    const unsubscribeRevisions = listenToCloudRevisions((cloudRevisions) => {
-      if (cloudRevisions && cloudRevisions.length > 0) {
-        setRevisions(cloudRevisions);
-        localStorage.setItem("revisions_db", JSON.stringify(cloudRevisions));
-      }
-    });
-
-    return () => {
-      unsubscribeObras();
-      unsubscribeLogs();
-      unsubscribeRevisions();
-    };
   }, []);
 
   // Listen for custom settings events to register audit logs silently
@@ -552,7 +477,7 @@ export default function App() {
     saveObras(updatedObras);
 
     // Call individual deletion from cloud
-    deleteIndividualObraOnline(obraId).catch((err) => {
+    supabaseDeleteObra(obraId).catch((err) => {
       console.warn("Erro ao deletar obra da nuvem:", err);
     });
 
