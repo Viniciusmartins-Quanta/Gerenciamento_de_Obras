@@ -544,6 +544,7 @@ export async function generateWeeklyPDF(selectedObra: Obra, selectedReport: Week
   // DOWNLOAD FINAL PDF
   await _addFooterAndHeaderDecorations(doc);
   doc.save(`CODEMAR_Relatorio_${selectedObra.contratoNo.replace('/', '_')}_Semana_${selectedReport.periodoInicio}.pdf`);
+  return doc;
 }
 
 // Global page number and border decorator to give maximum polish!
