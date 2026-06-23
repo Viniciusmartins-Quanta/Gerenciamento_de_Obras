@@ -304,26 +304,26 @@ export function saveRevisions(revisions: Revision[]) {
   }
 }
 
-export function getCurrentUser(): UserProfile | null {
+export function getCurrentUser(): UserProfile {
   try {
     const user = localStorage.getItem("current_user");
     if (!user) {
-      return null;
+      return INITIAL_USERS[0];
     }
     const parsed = JSON.parse(user);
     if (!parsed || typeof parsed !== "object") {
-      return null;
+      return INITIAL_USERS[0];
     }
     
     // If cached current user is Andreia, migrate automatically to Vinicius
     if (parsed.id === "user-andreia" || parsed.email === "andreia.paula@quantaconsultoria.com") {
-      return null;
+      return INITIAL_USERS[0];
     }
 
     return parsed;
   } catch (e) {
     console.error("Erro ao recuperar o usuário atual:", e);
-    return null;
+    return INITIAL_USERS[0];
   }
 }
 

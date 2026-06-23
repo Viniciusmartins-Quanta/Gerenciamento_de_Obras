@@ -13,7 +13,6 @@ import { supabase } from "./utils/supabaseClient";
 import { exportObrasToExcel } from "./utils/excelGenerator";
 import { generateConsolidatedWeeklyPDF } from "./utils/pdfGenerator";
 import UserAuth from "./components/UserAuth";
-import LoginScreen from "./components/LoginScreen";
 import WorkDetail from "./components/WorkDetail";
 import WorkForm from "./components/WorkForm";
 import WeeklyReportForm from "./components/WeeklyReportForm";
@@ -23,7 +22,7 @@ import ImageRepositoryView from "./components/ImageRepositoryView";
 import ImagePickerModal from "./components/ImagePickerModal";
 import { 
   Building2, PlusCircle, Search, Filter, Database, TrendingUp, CheckCircle, 
-  Clock, Coins, Download, Shield, LogOut, LayoutGrid, ClipboardList, AlertTriangle, Settings,
+  Clock, Coins, Download, Shield, LayoutGrid, ClipboardList, AlertTriangle, Settings,
   Wrench, Loader2, ShieldCheck, Check, Sparkles, Activity, Trash2, Image as ImageIcon, Folder
 } from "lucide-react";
 
@@ -1123,16 +1122,7 @@ export default function App() {
     return matchesSearch && matchesStatus;
   });
 
-  if (!isAuthenticated) {
-    return (
-      <LoginScreen
-        onLoginSuccess={(user) => {
-          setCurrentUser(user);
-          setIsAuthenticated(true);
-        }}
-      />
-    );
-  }
+
 
   const activeObraObj = obras.find(o => o.id === selectedObraId);
 
@@ -1266,23 +1256,7 @@ export default function App() {
                   Ambiente: CT 026 - Supervisão
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  const confirmed = window.confirm("Deseja realmente sair do painel e encerrar sua sessão segura?");
-                  if (confirmed) {
-                    localStorage.removeItem("current_user");
-                    sessionStorage.removeItem("auth_session_active");
-                    setIsAuthenticated(false);
-                    setCurrentUser(null);
-                    supabase.auth.signOut().catch(() => {});
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 border border-rose-900/40 hover:border-rose-700 bg-rose-950/20 hover:bg-rose-900/30 text-rose-400 hover:text-rose-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer"
-                title="Encerrar Sessão Segura"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sair do Sistema
-              </button>
+
             </>
           )}
         </div>
@@ -1328,22 +1302,7 @@ export default function App() {
                     <span className="hidden sm:inline font-bold text-[11px]">Sincronizado</span>
                     <span className="font-mono text-[9px] text-emerald-600 border-l border-emerald-250 pl-1.5 leading-none">CT 026</span>
                   </div>
-                  <button
-                    onClick={() => {
-                      const confirmed = window.confirm("Deseja realmente sair do painel?");
-                      if (confirmed) {
-                        localStorage.removeItem("current_user");
-                        sessionStorage.removeItem("auth_session_active");
-                        setIsAuthenticated(false);
-                        setCurrentUser(null);
-                        supabase.auth.signOut().catch(() => {});
-                      }
-                    }}
-                    className="p-3 bg-red-100/80 hover:bg-red-100 border border-red-150 text-red-600 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0"
-                    title="Sair"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </button>
+
                 </>
               )}
             </div>

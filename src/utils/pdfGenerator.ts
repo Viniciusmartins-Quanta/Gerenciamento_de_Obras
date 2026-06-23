@@ -54,11 +54,14 @@ export async function generateWeeklyPDF(selectedObra: Obra, selectedReport: Week
     format: "a4"
   });
 
-  // Load the "timbrado" (letterhead background image) prioritizing localStorage
+  // Load the "timbrado" (letterhead background image) prioritizing localStorage, then /timbrado.png, then fallback
   let bgImgData = localStorage.getItem("pdfTimbradoImage");
   if (bgImgData && (bgImgData.startsWith("http") || bgImgData.startsWith("/"))) {
     const fetched = await getBase64ImageFromUrl(bgImgData);
     if (fetched) bgImgData = fetched;
+  }
+  if (!bgImgData || !bgImgData.startsWith("data:image")) {
+    bgImgData = await getBase64ImageFromUrl("/timbrado.png");
   }
   if (!bgImgData || !bgImgData.startsWith("data:image")) {
     bgImgData = await getBase64ImageFromUrl(quantaBackground);
@@ -83,15 +86,23 @@ export async function generateWeeklyPDF(selectedObra: Obra, selectedReport: Week
   const darkTextColor = [30, 30, 30];
   const borderLight = [200, 200, 200];
 
-  // Optional CAPA / Cover
+  // Optional CAPA / Cover (with fallback to /cover.jpg)
   let capaImgData = localStorage.getItem("pdfCapaImage");
   if (capaImgData && (capaImgData.startsWith("http") || capaImgData.startsWith("/"))) {
     const fetched = await getBase64ImageFromUrl(capaImgData);
     if (fetched) capaImgData = fetched;
   }
+  if (!capaImgData || !capaImgData.startsWith("data:image")) {
+    capaImgData = await getBase64ImageFromUrl("/cover.jpg");
+  }
   if (capaImgData && capaImgData.startsWith("data:image")) {
     // Draw the custom cover image filling the A4 page
     doc.addImage(capaImgData, getImageFormat(capaImgData), 0, 0, 210, 297, undefined, "NONE");
+    
+    // Draw watermark (timbrado.png) on top of the cover image, but under text
+    if (bgImgData) {
+      doc.addImage(bgImgData, getImageFormat(bgImgData), 0, 0, 210, 297, undefined, "NONE");
+    }
     
     // Add overlay text
     doc.setFont("Helvetica", "bold");
@@ -582,11 +593,14 @@ export async function generateConsolidatedWeeklyPDF(
     format: "a4"
   });
 
-  // Load the "timbrado" (letterhead background image) prioritizing localStorage
+  // Load the "timbrado" (letterhead background image) prioritizing localStorage, then /timbrado.png, then fallback
   let bgImgData = localStorage.getItem("pdfTimbradoImage");
   if (bgImgData && (bgImgData.startsWith("http") || bgImgData.startsWith("/"))) {
     const fetched = await getBase64ImageFromUrl(bgImgData);
     if (fetched) bgImgData = fetched;
+  }
+  if (!bgImgData || !bgImgData.startsWith("data:image")) {
+    bgImgData = await getBase64ImageFromUrl("/timbrado.png");
   }
   if (!bgImgData || !bgImgData.startsWith("data:image")) {
     bgImgData = await getBase64ImageFromUrl(quantaBackground);
@@ -611,14 +625,22 @@ export async function generateConsolidatedWeeklyPDF(
   const darkTextColor = [30, 30, 30];
   const borderLight = [200, 200, 200];
 
-  // Optional CAPA / Cover
+  // Optional CAPA / Cover (with fallback to /cover.jpg)
   let capaImgData = localStorage.getItem("pdfCapaImage");
   if (capaImgData && (capaImgData.startsWith("http") || capaImgData.startsWith("/"))) {
     const fetched = await getBase64ImageFromUrl(capaImgData);
     if (fetched) capaImgData = fetched;
   }
+  if (!capaImgData || !capaImgData.startsWith("data:image")) {
+    capaImgData = await getBase64ImageFromUrl("/cover.jpg");
+  }
   if (capaImgData && capaImgData.startsWith("data:image")) {
     doc.addImage(capaImgData, getImageFormat(capaImgData), 0, 0, 210, 297, undefined, "NONE");
+    
+    // Draw watermark (timbrado.png) on top of the cover image, but under text
+    if (bgImgData) {
+      doc.addImage(bgImgData, getImageFormat(bgImgData), 0, 0, 210, 297, undefined, "NONE");
+    }
     
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(28);
